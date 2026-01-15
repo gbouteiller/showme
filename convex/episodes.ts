@@ -42,7 +42,7 @@ export const readManyUnwatched = query({
         .collect();
 
       const episodes = yield* E.all(docs.map(episodeFromDoc(db)));
-      return episodes.filter(({ show: { isFavorite } }) => isFavorite).slice(0, limit);
+      return episodes.filter(({ show: { preference } }) => preference === "favorite").slice(0, limit);
     }),
 });
 
@@ -59,7 +59,7 @@ export const readManyUpcoming = query({
         .collect();
 
       const episodes = yield* E.all(docs.map(episodeFromDoc(db)));
-      return episodes.filter(({ show: { isFavorite } }) => isFavorite).slice(0, limit);
+      return episodes.filter(({ show: { preference } }) => preference === "favorite").slice(0, limit);
     }),
 });
 

@@ -24,9 +24,9 @@ export const schema = defineSchema({
   shows: defineTable(sShowFields)
     .index("by_api", ["apiId"])
     .index("by_rating", ["rating"])
-    .index("by_favorites_and_name", ["isFavorite", "name"])
-    .index("by_favorites_and_rating", ["isFavorite", "rating"])
-    .index("by_favorites_and_weight", ["isFavorite", "weight"])
-    .index("by_weight", ["weight"]),
+    .index("by_weight", ["weight"])
+    .index("by_preference_and_name", ["preference", "name"])
+    .index("by_preference_and_rating", ["preference", "rating"])
+    .index("by_preference_and_weight", ["preference", "weight"]),
 });
 export default schema.convexSchemaDefinition;

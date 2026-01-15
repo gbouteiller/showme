@@ -24,7 +24,7 @@ export const readManyFavorites = query({
       const { db } = yield* QueryCtx;
       const docs = yield* db
         .query("shows")
-        .withIndex("by_favorites_and_name", (q) => q.eq("isFavorite", true))
+        .withIndex("by_preference_and_name", (q) => q.eq("preference", "favorite"))
         .order("asc")
         .take(limit);
       return yield* E.all(docs.map(showFromDoc(db)));
@@ -42,7 +42,7 @@ export const readManyTopRated = query({
     }),
 });
 
-export const readManyTopRatedButNotFavorites = query({
+export const readManyTopRatedUnset = query({
   args: S.Struct({ limit: S.optional(S.NonNegativeInt) }),
   returns: S.Array(sShow),
   handler: ({ limit = 10 }) =>
@@ -50,7 +50,7 @@ export const readManyTopRatedButNotFavorites = query({
       const { db } = yield* QueryCtx;
       const docs = yield* db
         .query("shows")
-        .withIndex("by_favorites_and_rating", (q) => q.eq("isFavorite", false))
+        .withIndex("by_preference_and_rating", (q) => q.eq("preference", "unset"))
         .order("desc")
         .take(limit);
       return yield* E.all(docs.map(showFromDoc(db)));
@@ -68,7 +68,7 @@ export const readManyTrending = query({
     }),
 });
 
-export const readManyTrendingButNotFavorites = query({
+export const readManyTrendingUnset = query({
   args: S.Struct({ limit: S.optional(S.NonNegativeInt) }),
   returns: S.Array(sShow),
   handler: ({ limit = 10 }) =>
@@ -76,7 +76,7 @@ export const readManyTrendingButNotFavorites = query({
       const { db } = yield* QueryCtx;
       const docs = yield* db
         .query("shows")
-        .withIndex("by_favorites_and_weight", (q) => q.eq("isFavorite", false))
+        .withIndex("by_preference_and_weight", (q) => q.eq("preference", "unset"))
         .order("desc")
         .take(limit);
       return yield* E.all(docs.map(showFromDoc(db)));
@@ -122,15 +122,15 @@ export const fetchManyMissing = mutation({
     }),
 });
 
-export const setFavorite = mutation({
-  args: S.Struct({ ...sShowRef.fields, isFavorite: S.Boolean }),
+export const setPreference = mutation({
+  args: S.Struct({ ...sShowRef.fields, preference: S.Literal("favorite", "ignored", "unset") }),
   returns: S.Null,
-  handler: ({ _id, isFavorite }): E.Effect<null, NoSuchElementException | ParseError, MutationCtx> =>
+  handler: ({ _id, preference }): E.Effect<null, NoSuchElementException | ParseError, MutationCtx> =>
     E.gen(function* () {
       const { db, scheduler } = yield* MutationCtx;
       const { apiId } = (yield* db.get(_id)).pipe(O.getOrThrow);
-      yield* db.patch(_id, { isFavorite });
-      if (isFavorite) yield* scheduler.runAfter(0, api.episodes.fetchForShow, { _id, apiId });
+      yield* db.patch(_id, { preference });
+      if (preference === "favorite") yield* scheduler.runAfter(0, api.episodes.fetchForShow, { _id, apiId });
       return null;
     }),
 });
