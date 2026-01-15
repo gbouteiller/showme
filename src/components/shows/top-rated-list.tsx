@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ShowItem } from "./item";
 
 export function TopRatedShowsList({ limit }: TopRatedShowsListProps) {
-  const { data: shows, isLoading } = useQuery(convexQuery(api.shows.readManyTopRatedButNotFavorites, { limit }));
+  const { data: shows, isLoading } = useQuery(convexQuery(api.shows.readManyTopRatedUnset, { limit }));
 
   if (isLoading || !shows)
     return (

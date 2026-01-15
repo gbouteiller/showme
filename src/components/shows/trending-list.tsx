@@ -7,7 +7,7 @@ import { api } from "@/convex/_generated/api";
 import { ShowItem } from "./item";
 
 export function TrendingShowsList({ limit }: TrendingSeriesListProps) {
-  const { data: shows, isLoading } = useQuery(convexQuery(api.shows.readManyTrendingButNotFavorites, { limit }));
+  const { data: shows, isLoading } = useQuery(convexQuery(api.shows.readManyTrendingUnset, { limit }));
 
   if (isLoading || !shows) {
     return (
