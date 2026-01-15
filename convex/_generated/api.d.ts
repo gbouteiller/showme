@@ -8,7 +8,10 @@
  * @module
  */
 
-import type * as todos from "../todos.js";
+import type * as confect from "../confect.js";
+import type * as episodes from "../episodes.js";
+import type * as fetcher from "../fetcher.js";
+import type * as shows from "../shows.js";
 
 import type {
   ApiFromModules,
@@ -17,7 +20,10 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  todos: typeof todos;
+  confect: typeof confect;
+  episodes: typeof episodes;
+  fetcher: typeof fetcher;
+  shows: typeof shows;
 }>;
 
 /**

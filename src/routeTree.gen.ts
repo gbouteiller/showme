@@ -9,38 +9,153 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ParametresRouteImport } from './routes/parametres'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SeriesTendancesRouteImport } from './routes/series.tendances'
+import { Route as SeriesFavoritesRouteImport } from './routes/series.favorites'
+import { Route as SeriesADecouvrirRouteImport } from './routes/series.a-decouvrir'
+import { Route as SeriesShowIdRouteImport } from './routes/series.$showId'
+import { Route as EpisodesNonVusRouteImport } from './routes/episodes.non-vus'
+import { Route as EpisodesAVenirRouteImport } from './routes/episodes.a-venir'
+import { Route as EpisodesEpisodeIdRouteImport } from './routes/episodes.$episodeId'
 
+const ParametresRoute = ParametresRouteImport.update({
+  id: '/parametres',
+  path: '/parametres',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SeriesTendancesRoute = SeriesTendancesRouteImport.update({
+  id: '/series/tendances',
+  path: '/series/tendances',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SeriesFavoritesRoute = SeriesFavoritesRouteImport.update({
+  id: '/series/favorites',
+  path: '/series/favorites',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SeriesADecouvrirRoute = SeriesADecouvrirRouteImport.update({
+  id: '/series/a-decouvrir',
+  path: '/series/a-decouvrir',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SeriesShowIdRoute = SeriesShowIdRouteImport.update({
+  id: '/series/$showId',
+  path: '/series/$showId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EpisodesNonVusRoute = EpisodesNonVusRouteImport.update({
+  id: '/episodes/non-vus',
+  path: '/episodes/non-vus',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EpisodesAVenirRoute = EpisodesAVenirRouteImport.update({
+  id: '/episodes/a-venir',
+  path: '/episodes/a-venir',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EpisodesEpisodeIdRoute = EpisodesEpisodeIdRouteImport.update({
+  id: '/episodes/$episodeId',
+  path: '/episodes/$episodeId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/parametres': typeof ParametresRoute
+  '/episodes/$episodeId': typeof EpisodesEpisodeIdRoute
+  '/episodes/a-venir': typeof EpisodesAVenirRoute
+  '/episodes/non-vus': typeof EpisodesNonVusRoute
+  '/series/$showId': typeof SeriesShowIdRoute
+  '/series/a-decouvrir': typeof SeriesADecouvrirRoute
+  '/series/favorites': typeof SeriesFavoritesRoute
+  '/series/tendances': typeof SeriesTendancesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/parametres': typeof ParametresRoute
+  '/episodes/$episodeId': typeof EpisodesEpisodeIdRoute
+  '/episodes/a-venir': typeof EpisodesAVenirRoute
+  '/episodes/non-vus': typeof EpisodesNonVusRoute
+  '/series/$showId': typeof SeriesShowIdRoute
+  '/series/a-decouvrir': typeof SeriesADecouvrirRoute
+  '/series/favorites': typeof SeriesFavoritesRoute
+  '/series/tendances': typeof SeriesTendancesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/parametres': typeof ParametresRoute
+  '/episodes/$episodeId': typeof EpisodesEpisodeIdRoute
+  '/episodes/a-venir': typeof EpisodesAVenirRoute
+  '/episodes/non-vus': typeof EpisodesNonVusRoute
+  '/series/$showId': typeof SeriesShowIdRoute
+  '/series/a-decouvrir': typeof SeriesADecouvrirRoute
+  '/series/favorites': typeof SeriesFavoritesRoute
+  '/series/tendances': typeof SeriesTendancesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/parametres'
+    | '/episodes/$episodeId'
+    | '/episodes/a-venir'
+    | '/episodes/non-vus'
+    | '/series/$showId'
+    | '/series/a-decouvrir'
+    | '/series/favorites'
+    | '/series/tendances'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/parametres'
+    | '/episodes/$episodeId'
+    | '/episodes/a-venir'
+    | '/episodes/non-vus'
+    | '/series/$showId'
+    | '/series/a-decouvrir'
+    | '/series/favorites'
+    | '/series/tendances'
+  id:
+    | '__root__'
+    | '/'
+    | '/parametres'
+    | '/episodes/$episodeId'
+    | '/episodes/a-venir'
+    | '/episodes/non-vus'
+    | '/series/$showId'
+    | '/series/a-decouvrir'
+    | '/series/favorites'
+    | '/series/tendances'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ParametresRoute: typeof ParametresRoute
+  EpisodesEpisodeIdRoute: typeof EpisodesEpisodeIdRoute
+  EpisodesAVenirRoute: typeof EpisodesAVenirRoute
+  EpisodesNonVusRoute: typeof EpisodesNonVusRoute
+  SeriesShowIdRoute: typeof SeriesShowIdRoute
+  SeriesADecouvrirRoute: typeof SeriesADecouvrirRoute
+  SeriesFavoritesRoute: typeof SeriesFavoritesRoute
+  SeriesTendancesRoute: typeof SeriesTendancesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/parametres': {
+      id: '/parametres'
+      path: '/parametres'
+      fullPath: '/parametres'
+      preLoaderRoute: typeof ParametresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +163,68 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/series/tendances': {
+      id: '/series/tendances'
+      path: '/series/tendances'
+      fullPath: '/series/tendances'
+      preLoaderRoute: typeof SeriesTendancesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/series/favorites': {
+      id: '/series/favorites'
+      path: '/series/favorites'
+      fullPath: '/series/favorites'
+      preLoaderRoute: typeof SeriesFavoritesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/series/a-decouvrir': {
+      id: '/series/a-decouvrir'
+      path: '/series/a-decouvrir'
+      fullPath: '/series/a-decouvrir'
+      preLoaderRoute: typeof SeriesADecouvrirRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/series/$showId': {
+      id: '/series/$showId'
+      path: '/series/$showId'
+      fullPath: '/series/$showId'
+      preLoaderRoute: typeof SeriesShowIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/episodes/non-vus': {
+      id: '/episodes/non-vus'
+      path: '/episodes/non-vus'
+      fullPath: '/episodes/non-vus'
+      preLoaderRoute: typeof EpisodesNonVusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/episodes/a-venir': {
+      id: '/episodes/a-venir'
+      path: '/episodes/a-venir'
+      fullPath: '/episodes/a-venir'
+      preLoaderRoute: typeof EpisodesAVenirRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/episodes/$episodeId': {
+      id: '/episodes/$episodeId'
+      path: '/episodes/$episodeId'
+      fullPath: '/episodes/$episodeId'
+      preLoaderRoute: typeof EpisodesEpisodeIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ParametresRoute: ParametresRoute,
+  EpisodesEpisodeIdRoute: EpisodesEpisodeIdRoute,
+  EpisodesAVenirRoute: EpisodesAVenirRoute,
+  EpisodesNonVusRoute: EpisodesNonVusRoute,
+  SeriesShowIdRoute: SeriesShowIdRoute,
+  SeriesADecouvrirRoute: SeriesADecouvrirRoute,
+  SeriesFavoritesRoute: SeriesFavoritesRoute,
+  SeriesTendancesRoute: SeriesTendancesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

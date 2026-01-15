@@ -1,6 +1,7 @@
 @import 'tailwindcss';
-
 @import 'tw-animate-css';
+
+@plugin "@iconify/tailwind4";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -19,6 +20,18 @@ code {
 }
 
 :root {
+   --unwatched: var(--color-blue-700);
+  --unwatched-foreground: var(--color-white);
+  --upcoming: var(--color-violet-700);
+  --upcoming-foreground: var(--color-white);
+  --top-rated: var(--color-pink-700);
+  --top-rated-foreground: var(--color-white);
+  --trending: var(--color-emerald-700);
+  --trending-foreground: var(--color-white);
+  --favorites: var(--color-red-500);
+  --favorites-foreground: var(--color-white);
+  --settings: var(--color-gray-500);
+  --settings-foreground: var(--color-white);
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
@@ -55,6 +68,18 @@ code {
 }
 
 .dark {
+  --unwatched: var(--color-blue-700);
+  --unwatched-foreground: var(--color-white);
+  --upcoming: var(--color-violet-700);
+  --upcoming-foreground: var(--color-white);
+  --top-rated: var(--color-pink-700);
+  --top-rated-foreground: var(--color-white);
+  --trending: var(--color-emerald-700);
+  --trending-foreground: var(--color-white);
+  --favorites: var(--color-red-500);
+  --favorites-foreground: var(--color-white);
+  --settings: var(--color-gray-500);
+  --settings-foreground: var(--color-white);
   --background: oklch(0.141 0.005 285.823);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.141 0.005 285.823);
@@ -125,8 +150,36 @@ code {
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+  --color-unwatched: var(--unwatched);
+  --color-unwatched-foreground: var(--unwatched-foreground);
+  --color-upcoming: var(--upcoming);
+  --color-upcoming-foreground: var(--upcoming-foreground);
+  --color-top-rated: var(--top-rated);
+  --color-top-rated-foreground: var(--top-rated-foreground);
+  --color-trending: var(--trending);
+  --color-trending-foreground: var(--trending-foreground);
+  --color-favorites: var(--favorites);
+  --color-favorites-foreground: var(--favorites-foreground);
+  --color-settings: var(--settings);
+  --color-settings-foreground: var(--settings-foreground);
 }
+
+@theme inline {
+  --animate-progress: progress 1s infinite ease-in-out;
+
+  @keyframes progress {
+    0% {
+      transform: translateX(0) scaleX(0);
+    }
+    40% {
+      transform: translateX(0) scaleX(0.4);
+    }
+    100% {
+      transform: translateX(100%) scaleX(0.5);
+    }
+  }
+}
+
 
 @layer base {
   * {
