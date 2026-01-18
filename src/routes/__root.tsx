@@ -25,7 +25,7 @@ function RootDocument({ children }: RootDocumentProps) {
       <body>
         <ThemeProvider>
           <Header />
-          <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">{children}</div>
+          <div className="container mx-auto px-4 py-8 md:px-8">{children}</div>
           <Toaster richColors />
         </ThemeProvider>
         <Scripts />
