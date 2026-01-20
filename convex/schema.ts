@@ -27,6 +27,7 @@ export const schema = defineSchema({
     .index("by_weight", ["weight"])
     .index("by_preference_and_name", ["preference", "name"])
     .index("by_preference_and_rating", ["preference", "rating"])
-    .index("by_preference_and_weight", ["preference", "weight"]),
+    .index("by_preference_and_weight", ["preference", "weight"])
+    .searchIndex("search_name", { searchField: "name" }),
 });
 export default schema.convexSchemaDefinition;
