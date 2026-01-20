@@ -6,21 +6,11 @@ import type { VariantProps } from "class-variance-authority";
 import { formatDistanceToNow, isPast } from "date-fns";
 import { fr } from "date-fns/locale";
 import { type BADGE, Badge } from "@/components/adapted/badge";
-import { Button } from "@/components/adapted/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { Episodes } from "@/schemas/episodes";
+import { IconButton } from "../adapted/icon-button";
+import { IconConfirm } from "../adapted/icon-confirm";
 
 // MAIN ------------------------------------------------------------------------------------------------------------------------------------
 export function EpisodeItem({ episode, variant }: EpisodeItemProps) {
@@ -66,151 +56,48 @@ export function EpisodeItem({ episode, variant }: EpisodeItemProps) {
         </ItemDescription>
       </ItemContent>
       <ItemActions>
-        <Dialog>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <DialogTrigger
-                  render={
-                    <Button
-                      aria-label="Tout marquer comme vu (série)"
-                      className="cursor-pointer"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      size="icon"
-                      variant="outline"
-                    />
-                  }
-                >
-                  <span className="icon-[mdi--movie-check] size-5" />
-                </DialogTrigger>
-              }
-            />
-            <TooltipContent>Tout marquer comme vu (série)</TooltipContent>
-          </Tooltip>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Tout marquer comme vu ?</DialogTitle>
-              <DialogDescription>
-                Voulez-vous vraiment marquer tous les épisodes de la série {episode.show.name} comme vus ?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <DialogClose render={<Button variant="outline" />}>Annuler</DialogClose>
-              <DialogClose
-                render={
-                  <Button
-                    onClick={() =>
-                      setShowWatched({
-                        isWatched: true,
-                        showId: episode.showId,
-                      })
-                    }
-                    variant={variant}
-                  />
-                }
-              >
-                Confirmer
-              </DialogClose>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <DialogTrigger
-                  render={
-                    <Button
-                      aria-label="Tout marquer comme vu (saison)"
-                      className="cursor-pointer"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      size="icon"
-                      variant="outline"
-                    />
-                  }
-                >
-                  <span className="icon-[fluent--text-bullet-list-checkmark-20-filled] size-5" />
-                </DialogTrigger>
-              }
-            />
-            <TooltipContent>Tout marquer comme vu (saison)</TooltipContent>
-          </Tooltip>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Tout marquer comme vu ?</DialogTitle>
-              <DialogDescription>
-                Voulez-vous vraiment marquer tous les épisodes de la saison {episode.season} comme vus ?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <DialogClose render={<Button variant="outline" />}>Annuler</DialogClose>
-              <DialogClose
-                render={
-                  <Button
-                    onClick={() =>
-                      setSeasonWatched({
-                        isWatched: true,
-                        season: episode.season,
-                        showId: episode.showId,
-                      })
-                    }
-                    variant={variant}
-                  />
-                }
-              >
-                Confirmer
-              </DialogClose>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
+        <IconConfirm
+          confirmVariant={variant}
+          description={`Voulez-vous vraiment marquer tous les épisodes de la série ${episode.show.name} comme vus ?`}
+          icon="icon-[mdi--movie-check]"
+          label="Tout marquer comme vu (série)"
+          onClick={() =>
+            setShowWatched({
+              isWatched: true,
+              showId: episode.showId,
+            })
+          }
+          title="Tout marquer comme vu ?"
+        />
+        <IconConfirm
+          confirmVariant={variant}
+          description={`Voulez-vous vraiment marquer tous les épisodes de la saison ${episode.season} comme vus ?`}
+          icon="icon-[fluent--text-bullet-list-checkmark-20-filled]"
+          label="Tout marquer comme vu (saison)"
+          onClick={() =>
+            setSeasonWatched({
+              isWatched: true,
+              season: episode.season,
+              showId: episode.showId,
+            })
+          }
+          title="Tout marquer comme vu ?"
+        />
         {isAired && (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  aria-label="Marquer comme vu"
-                  className="cursor-pointer"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    toggleWatched({ _id: episode._id });
-                  }}
-                  size="icon"
-                  variant={variant}
-                />
-              }
-            >
-              <span className="icon-[mdi--eye-check] size-5" />
-            </TooltipTrigger>
-            <TooltipContent>Marquer comme vu</TooltipContent>
-          </Tooltip>
+          <IconButton
+            icon="icon-[mdi--eye-check]"
+            label="Marquer comme vu"
+            onClick={() => toggleWatched({ _id: episode._id })}
+            variant={variant}
+          />
         )}
-
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                aria-label="Voir les détails"
-                className="cursor-pointer"
-                nativeButton={false}
-                render={<Link params={{ episodeId: episode._id }} to="/episodes/$episodeId" />}
-                size="icon"
-                variant={variant}
-              />
-            }
-          >
-            <span className="icon-[lucide--chevron-right] size-5" />
-          </TooltipTrigger>
-          <TooltipContent>Voir les détails</TooltipContent>
-        </Tooltip>
+        <IconButton
+          icon="icon-[lucide--chevron-right]"
+          label="Voir les détails"
+          nativeButton={false}
+          render={<Link params={{ showId: episode.showId }} to="/series/$showId" />}
+          variant={variant}
+        />
       </ItemActions>
     </Item>
   );

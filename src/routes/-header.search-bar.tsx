@@ -8,9 +8,19 @@ import { Input } from "@/components/ui/input";
 // MAIN ************************************************************************************************************************************
 export function SearchBar() {
   const [query, setQuery] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
+  const [_isSearching, _setIsSearching] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [results, setResults] = useState<Array<any>>([]);
+  const [results, setResults] = useState<
+    Array<{
+      id: number;
+      name: string;
+      image?: { medium: string };
+      premiered?: string;
+      rating?: { average: number };
+      genres?: string[];
+      status?: string;
+    }>
+  >([]);
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   // const runSearch = useAction(api.tvmaze.searchSeries);
@@ -34,7 +44,7 @@ export function SearchBar() {
     };
   }, []);
 
-  const handleSearch = async (e?: React.FormEvent) => {
+  const handleSearch = async (_e?: React.FormEvent) => {
     // e?.preventDefault();
     // if (query.trim().length < 2) return;
     // setIsSearching(true);
@@ -70,24 +80,25 @@ export function SearchBar() {
     }
   };
 
-  const goToSeriesDetail = (id: number) => {
+  const goToSeriesDetail = (_id: number) => {
     // router.push(`/series/${id}`);
     clearSearch();
   };
 
-  const isFavorite = (seriesId: number): boolean => {
+  const isFavorite = (_seriesId: number): boolean => {
     // if (!favorites || !Array.isArray(favorites)) return false;
     // return favorites.some((fav: any) => fav.seriesId === seriesId);
+    return false;
   };
 
   const handleAddToFavorites = async (
-    e: React.MouseEvent,
-    seriesId: number,
-    name: string,
-    image: string | null,
-    year: string,
-    genres: Array<string>,
-    status: string
+    _e: React.MouseEvent,
+    _seriesId: number,
+    _name: string,
+    _image: string | null,
+    _year: string,
+    _genres: string[],
+    _status: string
   ) => {
     // e.stopPropagation();
     // try {
@@ -115,7 +126,7 @@ export function SearchBar() {
     // }
   };
 
-  const handleRemoveFavorite = async (e: React.MouseEvent, seriesId: number, name: string) => {
+  const handleRemoveFavorite = async (_e: React.MouseEvent, _seriesId: number, _name: string) => {
     // e.stopPropagation();
     // try {
     // 	// Get userId from localStorage and ensure it's not empty
@@ -169,7 +180,7 @@ export function SearchBar() {
                 <div className="flex items-center gap-3 rounded-md p-2 hover:bg-muted" key={show.id}>
                   <div className="relative h-16 w-12 flex-shrink-0 overflow-hidden rounded-sm">
                     {show.image ? (
-                      <Image alt={show.name} className="object-cover" src={show.image.medium} />
+                      <Image alt={show.name} className="object-cover" layout="fullWidth" src={show.image.medium} />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-muted">
                         <span className="icon-[lucide--search] h-4 w-4 text-muted-foreground" />
@@ -180,7 +191,7 @@ export function SearchBar() {
                     <p className="truncate font-medium text-sm">{show.name}</p>
                     <div className="flex items-center gap-1 text-muted-foreground text-xs">
                       {show.premiered && <span>{show.premiered.split("-")[0]}</span>}
-                      {show.rating.average && (
+                      {show.rating?.average && (
                         <span className="flex items-center">
                           • <span className="mx-0.5 text-yellow-500">★</span>
                           {show.rating.average.toFixed(1)}
@@ -210,8 +221,8 @@ export function SearchBar() {
                             show.name,
                             show.image?.medium || null,
                             show.premiered || "2023",
-                            show.genres,
-                            show.status
+                            show.genres ?? [],
+                            show.status ?? "Unknown"
                           )
                         }
                         size="icon"
@@ -253,7 +264,7 @@ export function SearchBar() {
         </div>
       )}
 
-      {isOpen && isSearching && (
+      {isOpen && _isSearching && (
         <div className="absolute right-0 left-0 z-50 mt-2 flex w-full justify-center rounded-lg border bg-background p-4 shadow-lg">
           <div className="flex items-center gap-2">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />

@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
-import type { Shows } from "@/schemas/shows";
+import { cn } from "@/lib/utils";
 
 // ROUTE -----------------------------------------------------------------------------------------------------------------------------------
 export const Route = createFileRoute("/series/a-decouvrir")({
@@ -29,10 +29,12 @@ function TopRatedShowsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
   const { data: shows, isLoading, error } = useQuery(convexQuery(api.shows.readManyTopRated, { limit: itemsPerPage }));
-  const setFavorite = useMutation({ mutationFn: useConvexMutation(api.shows.setFavorite) });
+  const { mutate: setPreference } = useMutation({ mutationFn: useConvexMutation(api.shows.setPreference) });
 
-  const handleAddToFavorites = async ({ _id }: Shows["Entity"]) => setFavorite.mutate({ _id, isFavorite: true });
-  const handleRemoveFavorite = async ({ _id }: Shows["Entity"]) => setFavorite.mutate({ _id, isFavorite: false });
+  const cyclePreference = (current: "favorite" | "unset" | "ignored"): "favorite" | "unset" | "ignored" => {
+    if (current === "favorite") return "unset";
+    return "favorite";
+  };
 
   const totalPages = shows ? Math.ceil(shows.length / itemsPerPage) : 0;
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -133,27 +135,17 @@ function TopRatedShowsPage() {
                     </div>
 
                     <div className="mt-auto flex gap-3">
-                      {show.isFavorite ? (
-                        <Button
-                          className="flex-1 border-red-300 text-red-500 hover:bg-red-50 hover:text-red-600"
-                          onClick={() => handleRemoveFavorite(show)}
-                          size="sm"
-                          title="Retirer des favoris"
-                          variant="outline"
-                        >
-                          <span className="icon-[lucide--heart] h-5 w-5" />
-                        </Button>
-                      ) : (
-                        <Button
-                          className="flex-1 bg-red-500 text-white hover:bg-red-600"
-                          onClick={() => handleAddToFavorites(show)}
-                          size="sm"
-                          title="Ajouter aux favoris"
-                          variant="default"
-                        >
-                          <span className="icon-[lucide--heart] h-5 w-5" />
-                        </Button>
-                      )}
+                      <Button
+                        className="flex-1 bg-red-500 text-white hover:bg-red-600"
+                        onClick={() => setPreference({ _id: show._id, preference: cyclePreference(show.preference) })}
+                        size="sm"
+                        title={show.preference === "favorite" ? "Retirer des favoris" : "Ajouter aux favoris"}
+                        variant="default"
+                      >
+                        <span
+                          className={cn("h-5 w-5", show.preference === "favorite" ? "icon-[lucide--heart-crack]" : "icon-[lucide--heart]")}
+                        />
+                      </Button>
                       <Link className="flex-none" params={{ showId: show._id }} to={"/series/$showId"}>
                         <Button size="sm" title="Voir les détails" variant="outline">
                           <span className="icon-[lucide--external-link] h-4 w-4" />
@@ -259,11 +251,9 @@ function TopRatedShowsPage() {
 function SeriesGridSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {Array(12)
-        .fill(0)
-        .map((_, i) => (
-          <Skeleton className="h-80 w-full" key={i} />
-        ))}
+      {new Array(12).fill(0).map((_, i) => (
+        <Skeleton className="h-80 w-full" key={i} />
+      ))}
     </div>
   );
 }

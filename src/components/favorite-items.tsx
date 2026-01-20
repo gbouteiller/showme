@@ -2,6 +2,7 @@ import { useConvexMutation } from "@convex-dev/react-query";
 import { useMutation } from "@tanstack/react-query";
 import { Image } from "@unpic/react";
 import { api } from "convex/_generated/api";
+// @ts-expect-error - legacy module
 import type { Favorite } from "convex/model/favorites";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -9,11 +10,10 @@ import { toast } from "sonner";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
-export function FavoriteItems({ items, kind }: { items: Array<Favorite>; kind: "unwatched" | "upcoming" }) {
+export function FavoriteItems({ items }: { items: Favorite[]; kind: "unwatched" | "upcoming" }) {
   const { mutate: markAsWatched } = useMutation({
-    mutationFn: useConvexMutation(api.favorites.markAsWatched),
+    mutationFn: useConvexMutation(api.favorites.markAsWatched as any),
     onSuccess: () => toast.success("Episode marqué comme vu avec succès"),
     onError: () => toast.error("Une erreur s'est produite"),
   });
@@ -30,27 +30,25 @@ export function FavoriteItems({ items, kind }: { items: Array<Favorite>; kind: "
       {items.map(({ _id, episode, show }) => (
         <div className="flex items-center gap-4 rounded-lg border bg-card p-3 text-card-foreground shadow-sm" key={episode._id}>
           <div className="relative h-20 w-36 flex-shrink-0 overflow-hidden rounded-md">
-            {episode.image ? (
-              <Image
-                alt={episode.name}
-                className="object-cover"
-                layout="fullWidth"
-                sizes="(max-width: 768px) 100vw, 33vw"
-                src={episode.image.medium}
-              />
-            ) : show.image ? (
-              <Image
-                alt={show.name}
-                className="object-cover"
-                layout="fullWidth"
-                sizes="(max-width: 768px) 100vw, 33vw"
-                src={show.image.medium}
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-muted">
-                <span className="icon-[lucide--info] h-6 w-6 text-muted-foreground" />
-              </div>
-            )}
+            {(() => {
+              const src = episode.image?.medium ?? show.image?.medium;
+              if (!src) {
+                return (
+                  <div className="flex h-full w-full items-center justify-center bg-muted">
+                    <span className="icon-[lucide--info] h-6 w-6 text-muted-foreground" />
+                  </div>
+                );
+              }
+              return (
+                <Image
+                  alt={episode.name ?? show.name}
+                  className="object-cover"
+                  layout="fullWidth"
+                  sizes="(max-width: 768px) 100vw, 33vw"
+                  src={src}
+                />
+              );
+            })()}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
@@ -61,25 +59,17 @@ export function FavoriteItems({ items, kind }: { items: Array<Favorite>; kind: "
             </div>
             <p className="truncate text-muted-foreground text-sm">{episode.name}</p>
             <p className="mt-1 text-muted-foreground text-xs">
-              Diffusé {formatDistanceToNow(episode.airstamp!, { addSuffix: true, locale: fr })}
+              Diffusé {episode.airstamp ? formatDistanceToNow(episode.airstamp, { addSuffix: true, locale: fr }) : "inconnue"}
             </p>
           </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  className="h-9 w-9 flex-shrink-0 bg-blue-500 text-white hover:bg-blue-600"
-                  onClick={() => markAsWatched({ id: _id })}
-                  size="icon"
-                >
-                  <span className="icon-[lucide--eye] size-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Marquer comme vu</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Button
+            className="h-9 w-9 flex-shrink-0 bg-blue-500 text-white hover:bg-blue-600"
+            onClick={() => markAsWatched({ id: _id })}
+            size="icon"
+            title="Marquer comme vu"
+          >
+            <span className="icon-[lucide--eye] size-5" />
+          </Button>
         </div>
       ))}
     </div>
@@ -90,11 +80,9 @@ export function FavoriteItems({ items, kind }: { items: Array<Favorite>; kind: "
 export function EpisodeItemsSkeleton() {
   return (
     <div className="space-y-4">
-      {Array(3)
-        .fill(0)
-        .map((_, i) => (
-          <Skeleton className="h-20 w-full" key={i} />
-        ))}
+      {new Array(3).fill(0).map((_, i) => (
+        <Skeleton className="h-20 w-full" key={i} />
+      ))}
     </div>
   );
 }

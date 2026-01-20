@@ -2,8 +2,6 @@ import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Image } from "@unpic/react";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,9 +15,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
 import type { Shows } from "@/schemas/shows";
 
 // ROUTE -----------------------------------------------------------------------------------------------------------------------------------
@@ -31,10 +27,9 @@ export const Route = createFileRoute("/series/tendances")({
 function TrendingShowsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
-  const { data: trendingSeries, isLoading: isLoadingTrending } = useQuery(convexQuery(api.shows.readManyTrending));
+  const { data: trendingSeries } = useQuery(convexQuery(api.shows.readManyTrending));
   const [paginatedSeries, setPaginatedSeries] = useState<Shows["Entity"][]>([]);
-  const [seriesIds, setSeriesIds] = useState<Id<"shows">[]>([]);
-  const setFavorite = useMutation({ mutationFn: useConvexMutation(api.shows.setFavorite) });
+  const { mutate: setPreference } = useMutation({ mutationFn: useConvexMutation(api.shows.setPreference) });
 
   // Mettre à jour les IDs des séries à afficher lorsque la page change
   useEffect(() => {
@@ -43,12 +38,13 @@ function TrendingShowsPage() {
       const endIndex = startIndex + itemsPerPage;
       const currentPageSeries = trendingSeries.slice(startIndex, endIndex);
       setPaginatedSeries(currentPageSeries);
-      setSeriesIds(currentPageSeries.map((series) => series._id));
     }
   }, [trendingSeries, currentPage, itemsPerPage]);
 
-  const handleAddToFavorites = async ({ _id }: Shows["Entity"]) => setFavorite.mutate({ _id, isFavorite: true });
-  const handleRemoveFavorite = async ({ _id }: Shows["Entity"]) => setFavorite.mutate({ _id, isFavorite: false });
+  const cyclePreference = (current: "favorite" | "unset" | "ignored"): "favorite" | "unset" | "ignored" => {
+    if (current === "favorite") return "unset";
+    return "favorite";
+  };
 
   // Pagination
   const totalPages = trendingSeries ? Math.ceil(trendingSeries.length / itemsPerPage) : 0;
@@ -59,17 +55,6 @@ function TrendingShowsPage() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
-
-  // Fonction pour formater la date au format court
-  const formatShortDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), "dd/MM/yy", { locale: fr });
-    } catch {
-      return "Date inconnue";
-    }
-  };
-
-  const isLoading = isLoadingTrending;
 
   return (
     <div className="flex flex-col gap-6">
@@ -188,22 +173,16 @@ function TrendingShowsPage() {
                         ) : ( */}
                         <Button
                           className="flex-1 bg-red-500 text-white hover:bg-red-600"
-                          onClick={
-                            () => {}
-                            // handleAddToFavorites(
-                            //   show.id,
-                            //   show.name,
-                            //   show.image?.medium || null,
-                            //   show.premiered || "2023",
-                            //   show.genres,
-                            //   show.status,
-                            // )
-                          }
+                          onClick={() => setPreference({ _id: show._id, preference: cyclePreference(show.preference) })}
                           size="sm"
-                          title="Ajouter aux favoris"
+                          title={show.preference === "favorite" ? "Retirer des favoris" : "Ajouter aux favoris"}
                           variant="default"
                         >
-                          <span className="icon-[lucide--heart] h-5 w-5" />
+                          <span
+                            className={
+                              show.preference === "favorite" ? "icon-[lucide--heart-crack] h-5 w-5" : "icon-[lucide--heart] h-5 w-5"
+                            }
+                          />
                         </Button>
                         {/* )} */}
                         <Link className="flex-none" params={{ showId: show._id }} to="/series/$showId">
@@ -306,17 +285,6 @@ function TrendingShowsPage() {
           </CardFooter>
         )}
       </Card>
-    </div>
-  );
-}
-
-// SKELETON --------------------------------------------------------------------------------------------------------------------------------
-function SeriesGridSkeleton() {
-  return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {new Array(9).fill(0).map((_, i) => (
-        <Skeleton className="h-96 w-full" key={i} />
-      ))}
     </div>
   );
 }

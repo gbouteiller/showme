@@ -1,6 +1,6 @@
-import { useConvexAction } from "@convex-dev/react-query";
+import { useConvexMutation } from "@convex-dev/react-query";
 import { useMutation } from "@tanstack/react-query";
-import { Link, useRouteContext } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { Image } from "@unpic/react";
 import { api } from "convex/_generated/api";
 import type { Doc } from "convex/_generated/dataModel";
@@ -11,19 +11,38 @@ import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
 
 // MAIN ------------------------------------------------------------------------------------------------------------------------------------
-export function ShowItems({ items, kind }: { items: Array<Doc<"shows"> & { isFavorite: boolean }>; kind: "topRated" | "trending" }) {
-  const { userId } = useRouteContext({ from: "/_authenticated" });
-
-  const { mutate: toggleFavorites, isPending } = useMutation({
-    mutationFn: useConvexAction(api.favorites.toggle),
-    onSuccess: (isFavorite) => toast.success(`Série ${isFavorite ? "ajoutée" : "retirée"} à vos favoris avec succès`),
+export function ShowItems({
+  items,
+  kind,
+}: {
+  items: Array<Doc<"shows"> & { preference: "favorite" | "unset" | "ignored" }>;
+  kind: "topRated" | "trending";
+}) {
+  const { mutate: setPreference, isPending } = useMutation({
+    // @ts-expect-error - useConvexMutation integration with useMutation
+    mutationFn: useConvexMutation(api.shows.setPreference),
+    // @ts-expect-error - useConvexMutation integration with useMutation
+    onSuccess: (_data, { preference }) => {
+      const messages: Record<string, string> = {
+        favorite: "Série ajoutée à vos favoris avec succès",
+        unset: "Série retirée de vos favoris avec succès",
+        ignored: "Série ignorée avec succès",
+      };
+      toast.success(messages[preference]);
+    },
     onError: () => toast.error("Une erreur s'est produite"),
   });
+
+  const cyclePreference = (current: "favorite" | "unset" | "ignored"): "favorite" | "unset" | "ignored" => {
+    if (current === "favorite") return "unset";
+    if (current === "unset") return "favorite";
+    return "unset";
+  };
 
   return (
     <div className="py-2">
       <div className="space-y-2.5">
-        {items.map(({ _id, api: apiId, image, isFavorite, name, premiered, rating, status }) => (
+        {items.map(({ _id, apiId, image, preference, name, rating }) => (
           <div
             className="overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm transition-shadow hover:shadow-md"
             key={apiId}
@@ -35,7 +54,7 @@ export function ShowItems({ items, kind }: { items: Array<Doc<"shows"> & { isFav
                   className="object-cover brightness-75"
                   layout="fullWidth"
                   sizes="(max-width: 768px) 100vw, 33vw"
-                  src={image.original}
+                  src={image}
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-muted">
@@ -60,14 +79,28 @@ export function ShowItems({ items, kind }: { items: Array<Doc<"shows"> & { isFav
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Button
-                      aria-label={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+                      aria-label={preference === "favorite" ? "Retirer des favoris" : "Ajouter aux favoris"}
                       className="h-6 w-6 bg-black/40 text-white hover:bg-black/60 hover:text-white"
                       disabled={isPending}
-                      onClick={() => toggleFavorites({ showApi: apiId, showId: _id, userId })}
+                      onClick={() => setPreference({ _id, preference: cyclePreference(preference) })}
                       size="icon"
                       variant="ghost"
                     >
-                      {isFavorite ? <span className="icon-[lucide--heart-crack]" /> : <span className="icon-[lucide--heart]" />}
+                      {preference === "favorite" ? (
+                        <span className="icon-[lucide--heart-crack]" />
+                      ) : (
+                        <span className="icon-[lucide--heart]" />
+                      )}
+                    </Button>
+                    <Button
+                      aria-label={preference === "ignored" ? "Ne plus ignorer" : "Ignorer"}
+                      className="h-6 w-6 bg-black/40 text-white hover:bg-black/60 hover:text-white"
+                      disabled={isPending}
+                      onClick={() => setPreference({ _id, preference: preference === "ignored" ? "unset" : "ignored" })}
+                      size="icon"
+                      variant="ghost"
+                    >
+                      {preference === "ignored" ? <span className="icon-[lucide--eye]" /> : <span className="icon-[lucide--eye-off]" />}
                     </Button>
                     <Link params={{ showId: `${apiId}` }} to="/series/$showId">
                       <Button
@@ -94,13 +127,11 @@ export function ShowItems({ items, kind }: { items: Array<Doc<"shows"> & { isFav
 export function ShowItemsSkeleton() {
   return (
     <div className="space-y-2.5">
-      {Array(10)
-        .fill(0)
-        .map((_, i) => (
-          <div className="overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm" key={i}>
-            <Skeleton className="h-16 w-full" />
-          </div>
-        ))}
+      {new Array(10).fill(0).map((_, i) => (
+        <div className="overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm" key={i}>
+          <Skeleton className="h-16 w-full" />
+        </div>
+      ))}
     </div>
   );
 }

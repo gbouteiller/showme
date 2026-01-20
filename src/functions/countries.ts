@@ -11,12 +11,11 @@ export function countryFromDoc(_db: Pick<QueryCtx["db"], "get">) {
 
 // CREATE ----------------------------------------------------------------------------------------------------------------------------------
 export function createMissingCountry(db: MutationCtx["db"]) {
-  return (dto: Countries["Create"]): E.Effect<Id<"countries">, ParseError> =>
-    E.gen(function* () {
-      const country = yield* readCountryByCode(db)(dto);
-      if (O.isSome(country)) return country.value._id;
-      return yield* db.insert("countries", dto);
-    });
+  return E.fn(function* (dto: Countries["Create"]): E.fn.Return<Id<"countries">, ParseError> {
+    const country = yield* readCountryByCode(db)(dto);
+    if (O.isSome(country)) return country.value._id;
+    return yield* db.insert("countries", dto);
+  });
 }
 
 // READ ------------------------------------------------------------------------------------------------------------------------------------

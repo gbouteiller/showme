@@ -2,73 +2,80 @@ import { useConvexMutation } from "@convex-dev/react-query";
 import { useMutation } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { cva, type VariantProps } from "class-variance-authority";
-import { type BADGE, Badge } from "@/components/adapted/badge";
-import { Button } from "@/components/adapted/button";
+import type { MouseEvent } from "react";
+import { Badge } from "@/components/adapted/badge";
+import { IconButton } from "@/components/adapted/icon-button";
 import { Item, ItemActions, ItemContent, ItemTitle } from "@/components/ui/item";
 import { api } from "@/convex/_generated/api";
 import type { Shows } from "@/schemas/shows";
 
 // MAIN ------------------------------------------------------------------------------------------------------------------------------------
 const ITEM = {
-  base: cva(`relative h-16 overflow-hidden bg-cover bg-center 
+  actions: cva("relative"),
+  base: cva(`relative h-16 overflow-hidden bg-cover bg-center px-2 py-0
   before:absolute before:inset-0 before:bg-linear-to-r before:from-black/80 before:to-black/30 before:content-['']
   hover:before:from-black/60 hover:before:to-black/10`),
-  favorite: cva("size-5", {
-    variants: {
-      isFavorite: {
-        true: "icon-[line-md--heart-filled]",
-        false: "icon-[line-md--heart]",
-      },
-    },
-  }),
+  content: cva("relative"),
+  star: cva("icon-[line-md--star-filled] size-2.5"),
 };
 
-export function ShowItem({ show, variant }: ShowItemProps) {
-  const limit = 10;
-  const { mutate: setFavorite } = useMutation({
-    mutationFn: useConvexMutation(api.shows.setFavorite).withOptimisticUpdate((localStore, { _id, isFavorite }) => {
-      const currentShows = localStore.getQuery(api.shows.readManyTopRated, { limit });
-      if (!currentShows) return;
-      const updatedShows = currentShows.map((show) => (show._id === _id ? { ...show, isFavorite } : show));
-      localStore.setQuery(api.shows.readManyTopRated, { limit }, updatedShows);
-    }),
+export function ShowItem({ show, variant, onRemoveStart, onRemoveEnd }: ShowItemProps) {
+  const { mutate: setPreference, isPending } = useMutation({
+    mutationFn: useConvexMutation(api.shows.setPreference),
+    onSuccess: () => {
+      if (onRemoveEnd) onRemoveEnd();
+    },
   });
 
+  const handleSetPreference = (preference: "favorite" | "ignored" | "unset") => (event: MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (onRemoveStart && (preference === "favorite" || preference === "ignored")) {
+      onRemoveStart();
+    }
+    setPreference({ _id: show._id, preference });
+  };
+
   return (
-    <div className="flex flex-col gap-2">
-      <Item
-        className={ITEM.base()}
-        render={<Link params={{ showId: show._id }} to="/series/$showId" />}
-        role="listitem"
-        style={{ backgroundImage: `url(${show.image})` }}
-        variant="outline"
-      >
-        <ItemContent className="relative">
-          <ItemTitle>
-            <Badge variant={variant}>
-              <span className="icon-[line-md--star-filled] size-2.5" />
-              {show.rating?.toFixed(1)}
-            </Badge>
-            {show.name}
-          </ItemTitle>
-        </ItemContent>
-        <ItemActions>
-          <Button
-            aria-label="Ajouter aux favoris"
-            className="cursor-pointer hover:text-rose-500"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setFavorite({ _id: show._id, isFavorite: !show.isFavorite });
-            }}
-            size="icon"
-            variant="link"
-          >
-            <span className={ITEM.favorite({ isFavorite: show.isFavorite })} />
-          </Button>
-        </ItemActions>
-      </Item>
-    </div>
+    <Item
+      className={ITEM.base()}
+      render={<Link params={{ showId: show._id }} to="/series/$showId" />}
+      role="listitem"
+      style={{ backgroundImage: `url(${show.image})` }}
+      variant="outline"
+    >
+      <ItemContent className={ITEM.content()}>
+        <ItemTitle>
+          <Badge variant={variant}>
+            <span className={ITEM.star()} />
+            {show.rating?.toFixed(1)}
+          </Badge>
+          {show.name}
+        </ItemTitle>
+      </ItemContent>
+      <ItemActions className={ITEM.actions()}>
+        <IconButton
+          icon="icon-[mdi--heart-broken]"
+          label="Ignorer la série"
+          loading={isPending}
+          onClick={handleSetPreference("ignored")}
+          size="icon-sm"
+        />
+        <IconButton
+          icon="icon-[mdi--heart]"
+          label="Ajouter aux favoris"
+          loading={isPending}
+          onClick={handleSetPreference("favorite")}
+          size="icon-sm"
+          variant={variant}
+        />
+      </ItemActions>
+    </Item>
   );
 }
-type ShowItemProps = { show: Shows["Entity"]; variant: VariantProps<typeof BADGE>["variant"] };
+type ShowItemProps = {
+  show: Shows["Entity"];
+  variant: VariantProps<typeof Badge>["variant"];
+  onRemoveStart?: () => void;
+  onRemoveEnd?: () => void;
+};

@@ -38,7 +38,7 @@ function FavoriteShowsLoading() {
 }
 
 // LOADED ----------------------------------------------------------------------------------------------------------------------------------
-function FavoriteShowsLoaded({ shows = [] }: { shows?: Shows["Entity"][] }) {
+function FavoriteShowsLoaded({ shows = [] }: { shows?: ReadonlyArray<Shows["Entity"]> }) {
   return shows.length === 0 ? <FavoriteShowsNone /> : <FavoriteShowsSome shows={shows} />;
 }
 
@@ -47,7 +47,7 @@ function FavoriteShowsNone() {
   return (
     <div className="py-12 text-center">
       <p className="mb-4 text-muted-foreground">Vous n&apos;avez pas encore de séries favorites</p>
-      <Link to="/series/search">
+      <Link to="/series/a-decouvrir">
         <Button>Rechercher des séries</Button>
       </Link>
     </div>
@@ -55,9 +55,12 @@ function FavoriteShowsNone() {
 }
 
 // LOADED ----------------------------------------------------------------------------------------------------------------------------------
-function FavoriteShowsSome({ shows }: { shows: Shows["Entity"][] }) {
-  const setFavorite = useMutation({ mutationFn: useConvexMutation(api.shows.setFavorite) });
-  const handleRemoveFavorite = async ({ _id }: Shows["Entity"]) => setFavorite.mutate({ _id, isFavorite: false });
+function FavoriteShowsSome({ shows }: { shows: ReadonlyArray<Shows["Entity"]> }) {
+  const { mutate: setPreference } = useMutation({ mutationFn: useConvexMutation(api.shows.setPreference) });
+  const cyclePreference = (current: "favorite" | "unset" | "ignored"): "favorite" | "unset" | "ignored" => {
+    if (current === "favorite") return "unset";
+    return "favorite";
+  };
   return (
     <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
       {shows.map((show) => {
@@ -135,15 +138,14 @@ function FavoriteShowsSome({ shows }: { shows: Shows["Entity"][] }) {
                 <div className="flex items-center">
                   <span className="icon-[lucide--calendar] mr-1.5 h-3.5 w-3.5 shrink-0 text-purple-500" />
                   <span className="truncate">
-                    {show.lastEpisode ? (
+                    {/* {show.lastEpisode ? (
                       <>
                         S{String(show.lastEpisode.season).padStart(2, "0")}E{String(show.lastEpisode.number).padStart(2, "0")} -{" "}
                         {show.lastEpisode.name}
-                        {/* {lastEpisode.airdate && ` - ${formatShortDate(lastEpisode.airdate)}`} */}
                       </>
-                    ) : (
-                      "Aucun épisode récent"
-                    )}
+                    ) : ( */}
+                    "Informations sur les épisodes non disponibles"
+                    {/* )} */}
                   </span>
                 </div>
               </div>
@@ -157,7 +159,7 @@ function FavoriteShowsSome({ shows }: { shows: Shows["Entity"][] }) {
                 </Link>
                 <Button
                   className="flex-none"
-                  onClick={() => handleRemoveFavorite(show)}
+                  onClick={() => setPreference({ _id: show._id, preference: cyclePreference(show.preference) })}
                   size="sm"
                   title="Retirer des favoris"
                   variant="outline"

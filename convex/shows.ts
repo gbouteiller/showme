@@ -5,7 +5,9 @@ import type { ParseError } from "effect/ParseResult";
 import { startFetcher } from "@/functions/fetcher";
 import {
   createMissingShow,
+  createShow,
   fetchMissingShowsPerPage,
+  readMaxApiIdShow,
   sFetchMissingShowsPerPageArgs,
   sFetchMissingShowsPerPageReturns,
   showFromDoc,
@@ -57,6 +59,35 @@ export const readManyTopRatedUnset = query({
     }),
 });
 
+export const readManyTopRatedUnsetPaginated = query({
+  args: S.Struct({
+    paginationOpts: S.Struct({
+      numItems: S.NonNegativeInt,
+      cursor: S.Union(S.Null, S.String),
+    }),
+  }),
+  returns: S.Struct({
+    page: S.Array(sShow),
+    continueCursor: S.Union(S.Null, S.String),
+    isDone: S.Boolean,
+  }),
+  handler: ({ paginationOpts }) =>
+    E.gen(function* () {
+      const { db } = yield* QueryCtx;
+      const results = yield* db
+        .query("shows")
+        .withIndex("by_preference_and_rating", (q) => q.eq("preference", "unset"))
+        .order("desc")
+        .paginate(paginationOpts);
+      const page = yield* E.all(results.page.map(showFromDoc(db)));
+      return {
+        page,
+        continueCursor: results.continueCursor,
+        isDone: results.isDone,
+      };
+    }),
+});
+
 export const readManyTrending = query({
   args: S.Struct({ limit: S.optional(S.NonNegativeInt) }),
   returns: S.Array(sShow),
@@ -83,6 +114,35 @@ export const readManyTrendingUnset = query({
     }),
 });
 
+export const readManyTrendingUnsetPaginated = query({
+  args: S.Struct({
+    paginationOpts: S.Struct({
+      numItems: S.NonNegativeInt,
+      cursor: S.Union(S.Null, S.String),
+    }),
+  }),
+  returns: S.Struct({
+    page: S.Array(sShow),
+    continueCursor: S.Union(S.Null, S.String),
+    isDone: S.Boolean,
+  }),
+  handler: ({ paginationOpts }) =>
+    E.gen(function* () {
+      const { db } = yield* QueryCtx;
+      const results = yield* db
+        .query("shows")
+        .withIndex("by_preference_and_weight", (q) => q.eq("preference", "unset"))
+        .order("desc")
+        .paginate(paginationOpts);
+      const page = yield* E.all(results.page.map(showFromDoc(db)));
+      return {
+        page,
+        continueCursor: results.continueCursor,
+        isDone: results.isDone,
+      };
+    }),
+});
+
 export const readById = query({
   args: sShowRef,
   returns: sShow,
@@ -101,10 +161,12 @@ export const createManyMissing = mutation({
   handler: ({ dtos }) =>
     E.gen(function* () {
       const { db } = yield* MutationCtx;
+      const maxApiIdShow = yield* readMaxApiIdShow(db)();
       let createdCount = 0;
       for (const dto of dtos) {
-        const { created } = yield* createMissingShow(db)(dto);
-        if (created) createdCount++;
+        if (O.isSome(maxApiIdShow) && dto.apiId <= maxApiIdShow.value.apiId) continue;
+        yield* createShow(db)(dto);
+        createdCount++;
       }
       return createdCount;
     }),

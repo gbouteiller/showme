@@ -23,12 +23,20 @@ function RouteComponent() {
   const _id = showId as Id<"shows">;
 
   const { data: show, isLoading } = useQuery(convexQuery(api.shows.readById, { _id }));
-  const { mutate: setFavorite } = useMutation({
-    mutationFn: useConvexMutation(api.shows.setFavorite),
+  const { mutate: setPreference } = useMutation({
+    mutationFn: useConvexMutation(api.shows.setPreference),
   });
 
-  const handleToggleFavorite = () => {
-    setFavorite({ _id, isFavorite: !show?.isFavorite });
+  const cyclePreference = (current: "favorite" | "unset" | "ignored"): "favorite" | "unset" | "ignored" => {
+    if (current === "favorite") return "unset";
+    if (current === "unset") return "ignored";
+    return "favorite";
+  };
+
+  const handleTogglePreference = () => {
+    if (show) {
+      setPreference({ _id, preference: cyclePreference(show.preference) });
+    }
   };
 
   if (isLoading || !show) {
@@ -64,9 +72,20 @@ function RouteComponent() {
           </div>
 
           <div className="mt-4 space-y-4">
-            <Button className="w-full" onClick={handleToggleFavorite}>
-              <span className={cn("mr-2 h-4 w-4", show.isFavorite ? "icon-[lucide--heart-off]" : "icon-[lucide--heart]")} />
-              {show.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+            <Button className="w-full" onClick={handleTogglePreference}>
+              <span
+                className={cn(
+                  "mr-2 h-4 w-4",
+                  show.preference === "favorite" && "icon-[lucide--heart-filled]",
+                  show.preference === "unset" && "icon-[lucide--heart]",
+                  show.preference === "ignored" && "icon-[lucide--heart-x]"
+                )}
+              />
+              {show.preference === "favorite"
+                ? "Retirer des favoris"
+                : show.preference === "ignored"
+                  ? "Ne plus ignorer"
+                  : "Ajouter aux favoris"}
             </Button>
 
             <div className="space-y-2">

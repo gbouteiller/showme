@@ -76,21 +76,6 @@ export function UnwatchedEpisodesList({ limit }: UnwatchedEpisodesListProps) {
   //   filterAiredEpisodes();
   // }, [watchStatuses, getEpisodes]);
 
-  const handleMarkAsWatched = async () => {
-    // try {
-    //   await markAsWatched({
-    //     userId: user?.id || "",
-    //     seriesId,
-    //     seasonNumber,
-    //     episodeNumber,
-    //     watched: true,
-    //   });
-    //   toast("Épisode marqué comme vu");
-    // } catch (e) {
-    //   toast("Impossible de marquer l'épisode comme vu");
-    // }
-  };
-
   // Fonction pour changer de page
   // const goToPage = (page: number) => {
   //   if (page >= 1 && page <= totalPages) {
