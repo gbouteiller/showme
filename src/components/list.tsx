@@ -34,7 +34,7 @@ export function List({ children, icon, link, title, variant }: ListProps) {
         </CardTitle>
         <CardAction>
           <Button nativeButton={false} render={<Link {...link} />} variant="link">
-            Voir tout
+            View all
           </Button>
         </CardAction>
       </CardHeader>

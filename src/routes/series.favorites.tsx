@@ -20,7 +20,7 @@ function FavoriteShowsPage() {
 
   return (
     <div className="container mx-auto py-8">
-      <PageHeader description="Gérez vos séries préférées" title="Mes séries favorites" />
+      <PageHeader description="Manage your favorite shows" title="My Favorite Shows" />
       {isPending ? <FavoriteShowsLoading /> : <FavoriteShowsLoaded shows={shows} />}
     </div>
   );
@@ -46,9 +46,9 @@ function FavoriteShowsLoaded({ shows = [] }: { shows?: ReadonlyArray<Shows["Enti
 function FavoriteShowsNone() {
   return (
     <div className="py-12 text-center">
-      <p className="mb-4 text-muted-foreground">Vous n&apos;avez pas encore de séries favorites</p>
+      <p className="mb-4 text-muted-foreground">You don&apos;t have any favorite shows yet</p>
       <Link to="/series/a-decouvrir">
-        <Button>Rechercher des séries</Button>
+        <Button>Search shows</Button>
       </Link>
     </div>
   );
@@ -108,7 +108,7 @@ function FavoriteShowsSome({ shows }: { shows: ReadonlyArray<Shows["Entity"]> })
             <div className="flex flex-1 flex-col p-4">
               {/* Description de la série au lieu de "Série en cours de diffusion" */}
               <p className="mb-3 line-clamp-3 text-muted-foreground text-sm">
-                {show.summary ? show.summary.replace(/<[^>]*>/g, "") : "Aucune description disponible"}
+                {show.summary ? show.summary.replace(/<[^>]*>/g, "") : "No description available"}
               </p>
 
               <div className="mb-3 space-y-3 text-xs">
@@ -144,7 +144,7 @@ function FavoriteShowsSome({ shows }: { shows: ReadonlyArray<Shows["Entity"]> })
                         {show.lastEpisode.name}
                       </>
                     ) : ( */}
-                    "Informations sur les épisodes non disponibles"
+                    "Episode information not available"
                     {/* )} */}
                   </span>
                 </div>
@@ -152,16 +152,16 @@ function FavoriteShowsSome({ shows }: { shows: ReadonlyArray<Shows["Entity"]> })
 
               <div className="mt-auto flex gap-3">
                 <Link className="flex-1" params={{ showId: show._id }} to={"/series/$showId"}>
-                  <Button className="w-full" size="sm" title="Voir les détails" variant="default">
+                  <Button className="w-full" size="sm" title="View details" variant="default">
                     <span className="icon-[lucide--external-link] mr-2 h-4 w-4" />
-                    Détails
+                    Details
                   </Button>
                 </Link>
                 <Button
                   className="flex-none"
                   onClick={() => setPreference({ _id: show._id, preference: cyclePreference(show.preference) })}
                   size="sm"
-                  title="Retirer des favoris"
+                  title="Remove from favorites"
                   variant="outline"
                 >
                   <span className="icon-[lucide--heart-off] h-4 w-4" />

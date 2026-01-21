@@ -1,12 +1,28 @@
 import { linkOptions } from "@tanstack/react-router";
 import { api } from "@/convex/_generated/api";
-import { ShowsList } from "./shows-list";
+import { ShowsList, ShowsListPaginated } from "./shows-list";
 
-export function TopRatedShowsList({ limit }: TopRatedShowsListProps) {
+export function TopRatedShowsList({ limit, paginated = false, itemsPerPage = 10 }: TopRatedShowsListProps) {
+  if (paginated) {
+    return (
+      <ShowsListPaginated
+        config={{
+          title: "Top Rated Shows",
+          icon: "icon-[lucide--star]",
+          link: linkOptions({ to: "/series/a-decouvrir" }),
+          variant: "topRated",
+          paginatedQuery: api.shows.readManyTopRatedUnsetPaginated,
+          queryKey: ["shows", "topRated", "unset", "paginated"],
+        }}
+        itemsPerPage={itemsPerPage}
+      />
+    );
+  }
+
   return (
     <ShowsList
       config={{
-        title: "Meilleures séries",
+        title: "Top Rated Shows",
         icon: "icon-[lucide--star]",
         link: linkOptions({ to: "/series/a-decouvrir" }),
         variant: "topRated",
@@ -18,4 +34,8 @@ export function TopRatedShowsList({ limit }: TopRatedShowsListProps) {
   );
 }
 
-type TopRatedShowsListProps = { limit?: number };
+type TopRatedShowsListProps = {
+  limit?: number;
+  paginated?: boolean;
+  itemsPerPage?: number;
+};

@@ -12,14 +12,14 @@ function UpcomingEpisodesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-bold text-3xl tracking-tight">Prochains épisodes</h1>
-        <p className="text-muted-foreground">Les épisodes à venir de vos séries favorites</p>
+        <h1 className="font-bold text-3xl tracking-tight">Upcoming Episodes</h1>
+        <p className="text-muted-foreground">Upcoming episodes from your favorite shows</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Calendrier de diffusion</CardTitle>
-          <CardDescription>Restez informé des prochaines sorties de vos séries préférées</CardDescription>
+          <CardTitle>Release Calendar</CardTitle>
+          <CardDescription>Stay informed about upcoming releases of your favorite shows</CardDescription>
         </CardHeader>
         <CardContent>
           <UpcomingEpisodesList />

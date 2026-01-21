@@ -59,13 +59,13 @@ function TrendingShowsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-bold font-heading text-3xl tracking-tight">Tendances</h1>
-        <p className="text-muted-foreground">Les séries en cours les plus populaires du moment</p>
+        <h1 className="font-bold font-heading text-3xl tracking-tight">Trending</h1>
+        <p className="text-muted-foreground">The most popular ongoing shows right now</p>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Séries tendances</CardTitle>
-          <CardDescription>Découvrez les séries qui font parler d&apos;elles en ce moment</CardDescription>
+          <CardTitle>Trending Shows</CardTitle>
+          <CardDescription>Discover the shows everyone is talking about</CardDescription>
         </CardHeader>
         <CardContent>
           {paginatedSeries.length > 0 ? (
@@ -115,7 +115,7 @@ function TrendingShowsPage() {
                     </div>
                     <div className="flex flex-1 flex-col p-4">
                       <p className="mb-3 line-clamp-3 text-muted-foreground text-sm">
-                        {show.summary?.replace(/<[^>]*>/g, "") || "Aucune description disponible"}
+                        {show.summary?.replace(/<[^>]*>/g, "") || "No description available"}
                       </p>
 
                       <div className="mb-3 space-y-3 text-xs">
@@ -175,7 +175,7 @@ function TrendingShowsPage() {
                           className="flex-1 bg-red-500 text-white hover:bg-red-600"
                           onClick={() => setPreference({ _id: show._id, preference: cyclePreference(show.preference) })}
                           size="sm"
-                          title={show.preference === "favorite" ? "Retirer des favoris" : "Ajouter aux favoris"}
+                          title={show.preference === "favorite" ? "Remove from favorites" : "Add to favorites"}
                           variant="default"
                         >
                           <span
@@ -186,7 +186,7 @@ function TrendingShowsPage() {
                         </Button>
                         {/* )} */}
                         <Link className="flex-none" params={{ showId: show._id }} to="/series/$showId">
-                          <Button size="sm" title="Voir les détails" variant="outline">
+                          <Button size="sm" title="View details" variant="outline">
                             <span className="icon-[lucide--external-link] h-4 w-4" />
                           </Button>
                         </Link>
@@ -199,7 +199,7 @@ function TrendingShowsPage() {
           ) : (
             <div className="py-4 text-center">
               <span className="icon-[lucide--info] mx-auto mb-2 h-12 w-12 text-muted-foreground" />
-              <p className="text-muted-foreground">Aucune série trouvée</p>
+              <p className="text-muted-foreground">No shows found</p>
             </div>
           )}
         </CardContent>

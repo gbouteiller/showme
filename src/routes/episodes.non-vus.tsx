@@ -12,14 +12,14 @@ function UnwatchedEpisodesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-bold text-3xl tracking-tight">Épisodes non vus</h1>
-        <p className="text-muted-foreground">Tous les épisodes de vos séries favorites que vous n&apos;avez pas encore regardés</p>
+        <h1 className="font-bold text-3xl tracking-tight">Unwatched Episodes</h1>
+        <p className="text-muted-foreground">All episodes from your favorite shows that you haven&apos;t watched yet</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Épisodes à regarder</CardTitle>
-          <CardDescription>Marquez les épisodes comme vus pour suivre votre progression</CardDescription>
+          <CardTitle>Episodes to watch</CardTitle>
+          <CardDescription>Mark episodes as watched to track your progress</CardDescription>
         </CardHeader>
         <CardContent>
           <UnwatchedEpisodesList />

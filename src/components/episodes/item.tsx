@@ -4,7 +4,6 @@ import { Link } from "@tanstack/react-router";
 import { Image } from "@unpic/react";
 import type { VariantProps } from "class-variance-authority";
 import { formatDistanceToNow, isPast } from "date-fns";
-import { fr } from "date-fns/locale";
 import { type BADGE, Badge } from "@/components/adapted/badge";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { api } from "@/convex/_generated/api";
@@ -51,29 +50,29 @@ export function EpisodeItem({ episode, variant }: EpisodeItemProps) {
         <ItemDescription>{episode.name}</ItemDescription>
         <ItemDescription className="mt-2 text-xs">
           {isAired
-            ? `Diffusé ${formatDistanceToNow(airDate, { addSuffix: true, locale: fr })}`
-            : `Sera diffusé ${formatDistanceToNow(airDate, { addSuffix: true, locale: fr })}`}
+            ? `Aired ${formatDistanceToNow(airDate, { addSuffix: true })}`
+            : `Airing ${formatDistanceToNow(airDate, { addSuffix: true })}`}
         </ItemDescription>
       </ItemContent>
       <ItemActions>
         <IconConfirm
           confirmVariant={variant}
-          description={`Voulez-vous vraiment marquer tous les épisodes de la série ${episode.show.name} comme vus ?`}
-          icon="icon-[mdi--movie-check]"
-          label="Tout marquer comme vu (série)"
+          description={`Do you really want to mark all episodes of ${episode.show.name} as watched?`}
+          icon="icon-[lucide--eye-off]"
+          label="Mark all as watched (show)"
           onClick={() =>
             setShowWatched({
               isWatched: true,
               showId: episode.showId,
             })
           }
-          title="Tout marquer comme vu ?"
+          title="Mark all as watched?"
         />
         <IconConfirm
           confirmVariant={variant}
-          description={`Voulez-vous vraiment marquer tous les épisodes de la saison ${episode.season} comme vus ?`}
+          description={`Do you really want to mark all episodes of season ${episode.season} as watched?`}
           icon="icon-[fluent--text-bullet-list-checkmark-20-filled]"
-          label="Tout marquer comme vu (saison)"
+          label="Mark all as watched (season)"
           onClick={() =>
             setSeasonWatched({
               isWatched: true,
@@ -81,19 +80,19 @@ export function EpisodeItem({ episode, variant }: EpisodeItemProps) {
               showId: episode.showId,
             })
           }
-          title="Tout marquer comme vu ?"
+          title="Mark all as watched?"
         />
         {isAired && (
           <IconButton
             icon="icon-[mdi--eye-check]"
-            label="Marquer comme vu"
+            label="Mark as watched"
             onClick={() => toggleWatched({ _id: episode._id })}
             variant={variant}
           />
         )}
         <IconButton
           icon="icon-[lucide--chevron-right]"
-          label="Voir les détails"
+          label="View details"
           nativeButton={false}
           render={<Link params={{ showId: episode.showId }} to="/series/$showId" />}
           variant={variant}

@@ -86,18 +86,18 @@ export function UnwatchedEpisodesList({ limit }: UnwatchedEpisodesListProps) {
 
   if (isLoading || !episodes)
     return (
-      <List icon="icon-[lucide--eye]" link={linkOptions({ to: "/episodes/non-vus" })} title="Épisodes non vus" variant="unwatched">
+      <List icon="icon-[lucide--eye]" link={linkOptions({ to: "/episodes/non-vus" })} title="Unwatched Episodes" variant="unwatched">
         <UnwatchedEpisodesListSkeleton />
       </List>
     );
 
   if (episodes.length === 0)
     return (
-      <List icon="icon-[lucide--eye]" link={linkOptions({ to: "/episodes/non-vus" })} title="Épisodes non vus" variant="unwatched">
+      <List icon="icon-[lucide--eye]" link={linkOptions({ to: "/episodes/non-vus" })} title="Unwatched Episodes" variant="unwatched">
         <div className="flex flex-col items-center justify-center py-10 text-center">
-          <p className="mb-4 text-muted-foreground">Vous n&apos;avez pas encore d&apos;épisodes non vus</p>
+          <p className="mb-4 text-muted-foreground">You don&apos;t have any unwatched episodes yet</p>
           <Link to="/">
-            <Button>Rechercher des séries</Button>
+            <Button>Search shows</Button>
           </Link>
         </div>
       </List>
@@ -112,7 +112,7 @@ export function UnwatchedEpisodesList({ limit }: UnwatchedEpisodesListProps) {
   //   : filteredStatuses.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
-    <List icon="icon-[lucide--eye]" link={linkOptions({ to: "/episodes/non-vus" })} title="Épisodes non vus" variant="unwatched">
+    <List icon="icon-[lucide--eye]" link={linkOptions({ to: "/episodes/non-vus" })} title="Unwatched Episodes" variant="unwatched">
       <ItemGroup>
         {episodes.map((episode) => (
           <EpisodeItem

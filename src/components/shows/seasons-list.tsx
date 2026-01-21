@@ -4,7 +4,7 @@ import { Image } from "@unpic/react";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
 import { format, isPast } from "date-fns";
-import { fr } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -57,10 +57,10 @@ export function SeasonsList({ apiId, showId }: SeasonsListProps) {
       { _id: episodeId },
       {
         onSuccess: () => {
-          toast.success("Statut de l'épisode mis à jour");
+          toast.success("Episode status updated");
         },
         onError: () => {
-          toast.error("Impossible de mettre à jour le statut de l'épisode");
+          toast.error("Unable to update episode status");
         },
       }
     );
@@ -74,7 +74,7 @@ export function SeasonsList({ apiId, showId }: SeasonsListProps) {
       }
     }
 
-    toast.success(allWatched ? "Saison marquée comme non vue" : "Saison marquée comme vue");
+    toast.success(allWatched ? "Season marked as unwatched" : "Season marked as watched");
   };
 
   if (isLoading || !episodes) {
@@ -110,7 +110,7 @@ export function SeasonsList({ apiId, showId }: SeasonsListProps) {
   if (seasons.length === 0) {
     return (
       <div className="py-8 text-center text-muted-foreground">
-        <p>Aucun épisode disponible pour cette série</p>
+        <p>No episodes available for this show</p>
       </div>
     );
   }
@@ -124,8 +124,8 @@ export function SeasonsList({ apiId, showId }: SeasonsListProps) {
           <AccordionItem key={season.number} value={`season-${season.number}`}>
             <AccordionTrigger>
               <div className="flex w-full items-center justify-between pr-4">
-                <span>Saison {season.number}</span>
-                <Badge variant="outline">{season.episodes.length} épisodes</Badge>
+                <span>Season {season.number}</span>
+                <Badge variant="outline">{season.episodes.length} episodes</Badge>
               </div>
             </AccordionTrigger>
             <AccordionContent>
@@ -135,12 +135,12 @@ export function SeasonsList({ apiId, showId }: SeasonsListProps) {
                     {allEpisodesWatched ? (
                       <>
                         <span className="icon-[lucide--eye-off] mr-2 h-4 w-4" />
-                        Marquer la saison comme non vue
+                        Mark season as unwatched
                       </>
                     ) : (
                       <>
                         <span className="icon-[lucide--eye] mr-2 h-4 w-4" />
-                        Marquer la saison comme vue
+                        Mark season as watched
                       </>
                     )}
                   </Button>
@@ -181,7 +181,7 @@ export function SeasonsList({ apiId, showId }: SeasonsListProps) {
                           </Badge>
                         </div>
                         <p className="mt-1 text-muted-foreground text-xs">
-                          {format(airDate, "d MMMM yyyy", { locale: fr })}
+                          {format(airDate, "MMMM d, yyyy", { locale: enUS })}
                           {episode.runtime && ` • ${episode.runtime} min`}
                         </p>
                       </div>
@@ -195,12 +195,12 @@ export function SeasonsList({ apiId, showId }: SeasonsListProps) {
                         {episode.isWatched ? (
                           <>
                             <span className="icon-[lucide--eye-off] mr-2 h-4 w-4" />
-                            Non vu
+                            Unwatched
                           </>
                         ) : (
                           <>
                             <span className="icon-[lucide--eye] mr-2 h-4 w-4" />
-                            Vu
+                            Watched
                           </>
                         )}
                       </Button>

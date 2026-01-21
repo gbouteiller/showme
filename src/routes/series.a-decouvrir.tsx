@@ -51,13 +51,13 @@ function TopRatedShowsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-bold text-3xl tracking-tight">Découvrir</h1>
-        <p className="text-muted-foreground">Les séries les mieux notées des 3 dernières années</p>
+        <h1 className="font-bold text-3xl tracking-tight">Discover</h1>
+        <p className="text-muted-foreground">The highest rated shows from the last 3 years</p>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Meilleures séries</CardTitle>
-          <CardDescription>Explorez les séries les plus appréciées par la critique et le public</CardDescription>
+          <CardTitle>Top Rated Shows</CardTitle>
+          <CardDescription>Explore the shows most appreciated by critics and the audience</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -65,7 +65,7 @@ function TopRatedShowsPage() {
           ) : error ? (
             <div className="py-4 text-center">
               <span className="icon-[lucide--info] mx-auto mb-2 h-12 w-12 text-muted-foreground" />
-              <p className="text-muted-foreground">Une erreur est survenue lors du chargement des séries</p>
+              <p className="text-muted-foreground">An error occurred while loading the shows</p>
             </div>
           ) : shows && shows.length > 0 ? (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -103,7 +103,7 @@ function TopRatedShowsPage() {
                   </div>
                   <div className="flex flex-1 flex-col p-4">
                     <p className="mb-3 line-clamp-3 text-muted-foreground text-sm">
-                      {show.summary?.replace(/<[^>]*>/g, "") || "Aucune description disponible"}
+                      {show.summary?.replace(/<[^>]*>/g, "") || "No description available"}
                     </p>
 
                     <div className="mb-3 space-y-3 text-xs">
@@ -122,14 +122,14 @@ function TopRatedShowsPage() {
                       {show.status && (
                         <div className="flex items-center">
                           <span className="icon-[lucide--trending-up] mr-1.5 h-3.5 w-3.5 shrink-0 text-blue-500" />
-                          <span className="truncate">{show.status === "Running" ? "En cours" : show.status}</span>
+                          <span className="truncate">{show.status === "Running" ? "Running" : show.status}</span>
                         </div>
                       )}
 
                       {show.premiered && (
                         <div className="flex items-center">
                           <span className="icon-[lucide--calendar] mr-1.5 h-3.5 w-3.5 shrink-0 text-purple-500" />
-                          <span className="truncate">Première diffusion: {show.premiered.split("-")[0]}</span>
+                          <span className="truncate">First aired: {show.premiered.split("-")[0]}</span>
                         </div>
                       )}
                     </div>
@@ -139,7 +139,7 @@ function TopRatedShowsPage() {
                         className="flex-1 bg-red-500 text-white hover:bg-red-600"
                         onClick={() => setPreference({ _id: show._id, preference: cyclePreference(show.preference) })}
                         size="sm"
-                        title={show.preference === "favorite" ? "Retirer des favoris" : "Ajouter aux favoris"}
+                        title={show.preference === "favorite" ? "Remove from favorites" : "Add to favorites"}
                         variant="default"
                       >
                         <span
@@ -147,7 +147,7 @@ function TopRatedShowsPage() {
                         />
                       </Button>
                       <Link className="flex-none" params={{ showId: show._id }} to={"/series/$showId"}>
-                        <Button size="sm" title="Voir les détails" variant="outline">
+                        <Button size="sm" title="View details" variant="outline">
                           <span className="icon-[lucide--external-link] h-4 w-4" />
                         </Button>
                       </Link>
@@ -159,7 +159,7 @@ function TopRatedShowsPage() {
           ) : (
             <div className="py-4 text-center">
               <span className="icon-[lucide--info] mx-auto mb-2 h-12 w-12 text-muted-foreground" />
-              <p className="text-muted-foreground">Aucune série trouvée</p>
+              <p className="text-muted-foreground">No shows found</p>
             </div>
           )}
         </CardContent>

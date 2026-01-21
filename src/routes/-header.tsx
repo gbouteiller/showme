@@ -17,37 +17,37 @@ import { SearchBar } from "./-header.search-bar";
 const headerRoutes = [
   linkOptions({
     to: "/episodes/non-vus",
-    label: "Épisodes non vus",
+    label: "Unwatched",
     icon: "icon-[lucide--eye]",
     activeProps: { className: "bg-muted text-unwatched" },
   }),
   linkOptions({
     to: "/episodes/a-venir",
-    label: "À venir",
+    label: "Upcoming",
     icon: "icon-[lucide--calendar]",
     activeProps: { className: "bg-muted text-upcoming" },
   }),
   linkOptions({
     to: "/series/a-decouvrir",
-    label: "Meilleures séries",
+    label: "Top Rated",
     icon: "icon-[lucide--star]",
     activeProps: { className: "bg-muted text-top-rated" },
   }),
   linkOptions({
     to: "/series/tendances",
-    label: "Tendances",
+    label: "Trending",
     icon: "icon-[lucide--trending-up]",
     activeProps: { className: "bg-muted text-trending" },
   }),
   linkOptions({
     to: "/series/favorites",
-    label: "Favoris",
+    label: "Favorites",
     icon: "icon-[lucide--heart]",
     activeProps: { className: "bg-muted text-favorites" },
   }),
   linkOptions({
     to: "/parametres",
-    label: "Paramètres",
+    label: "Settings",
     icon: "icon-[lucide--settings]",
     activeProps: { className: "bg-muted text-settings" },
   }),
@@ -121,7 +121,7 @@ export function MissingShowsProgress() {
   });
 
   useEffect(() => {
-    if (data && !data.isPending && data.created > 0) toast.success(`${data.created} séries ajoutées avec succès`);
+    if (data && !data.isPending && data.created > 0) toast.success(`${data.created} shows added successfully`);
   }, [data]);
 
   return (

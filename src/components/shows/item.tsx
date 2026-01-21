@@ -65,7 +65,7 @@ export function ShowItem({ className, show, variant, onRemoveStart, onRemoveEnd 
       <ItemActions className={ITEM.actions()}>
         <IconButton
           icon={show.preference !== "ignored" ? "icon-[mdi--heart-broken]" : "icon-[mdi--heart-outline]"}
-          label={show.preference !== "ignored" ? "Ignorer la série" : "Ne plus ignorer la série"}
+          label={show.preference !== "ignored" ? "Ignore show" : "Stop ignoring show"}
           loading={isPending}
           onClick={handleSetPreference(show.preference !== "ignored" ? "ignored" : "unset")}
           size="icon-sm"
@@ -73,7 +73,7 @@ export function ShowItem({ className, show, variant, onRemoveStart, onRemoveEnd 
         />
         <IconButton
           icon={show.preference !== "favorite" ? "icon-[mdi--heart]" : "icon-[mdi--heart-outline]"}
-          label={show.preference !== "favorite" ? "Ajouter aux favoris" : "Retirer des favoris"}
+          label={show.preference !== "favorite" ? "Add to favorites" : "Remove from favorites"}
           loading={isPending}
           onClick={handleSetPreference(show.preference !== "favorite" ? "favorite" : "unset")}
           size="icon-sm"

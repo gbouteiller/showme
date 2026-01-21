@@ -57,7 +57,7 @@ export function SearchResultItem({ show, onSelect }: SearchResultItemProps) {
       <div className="flex flex-shrink-0 items-center gap-1">
         <IconButton
           icon="icon-[mdi--heart-broken]"
-          label="Ignorer la série"
+          label="Ignore show"
           loading={isPending}
           onClick={handleSetPreference("ignored")}
           size="icon-xs"
@@ -65,7 +65,7 @@ export function SearchResultItem({ show, onSelect }: SearchResultItemProps) {
         />
         <IconButton
           icon="icon-[mdi--heart]"
-          label="Ajouter aux favoris"
+          label="Add to favorites"
           loading={isPending}
           onClick={handleSetPreference("favorite")}
           size="icon-xs"

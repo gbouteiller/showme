@@ -21,8 +21,8 @@ function IndexPage() {
           <UpcomingEpisodesList limit={10} />
         </div>
         <div className="space-y-6">
-          <TopRatedShowsList limit={10} />
-          <TrendingShowsList limit={10} />
+          <TopRatedShowsList limit={10} paginated />
+          <TrendingShowsList limit={10} paginated />
         </div>
       </div>
     </div>

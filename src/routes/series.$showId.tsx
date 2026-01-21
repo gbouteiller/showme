@@ -51,11 +51,11 @@ function RouteComponent() {
           <Link to="/series/favorites">
             <Button className="flex items-center gap-2" variant="outline">
               <span className="icon-[lucide--heart] h-4 w-4" />
-              Mes favoris
+              My Favorites
             </Button>
           </Link>
           <Link to="/">
-            <Button variant="outline">Rechercher</Button>
+            <Button variant="outline">Search</Button>
           </Link>
         </div>
       </div>
@@ -82,10 +82,10 @@ function RouteComponent() {
                 )}
               />
               {show.preference === "favorite"
-                ? "Retirer des favoris"
+                ? "Remove from favorites"
                 : show.preference === "ignored"
-                  ? "Ne plus ignorer"
-                  : "Ajouter aux favoris"}
+                  ? "Stop ignoring"
+                  : "Add to favorites"}
             </Button>
 
             <div className="space-y-2">
@@ -138,9 +138,9 @@ function RouteComponent() {
 
           <Tabs className="w-full" defaultValue="seasons">
             <TabsList className="mb-4">
-              <TabsTrigger value="seasons">Saisons et épisodes</TabsTrigger>
-              <TabsTrigger value="cast">Distribution</TabsTrigger>
-              <TabsTrigger value="similar">Séries similaires</TabsTrigger>
+              <TabsTrigger value="seasons">Seasons & Episodes</TabsTrigger>
+              <TabsTrigger value="cast">Cast</TabsTrigger>
+              <TabsTrigger value="similar">Similar Shows</TabsTrigger>
             </TabsList>
 
             <TabsContent value="seasons">
@@ -150,7 +150,7 @@ function RouteComponent() {
             <TabsContent value="cast">
               <Card>
                 <CardContent className="pt-6">
-                  <p className="text-center text-muted-foreground">Informations sur la distribution non disponibles</p>
+                  <p className="text-center text-muted-foreground">Cast information not available</p>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -158,7 +158,7 @@ function RouteComponent() {
             <TabsContent value="similar">
               <Card>
                 <CardContent className="pt-6">
-                  <p className="text-center text-muted-foreground">Suggestions de séries similaires non disponibles</p>
+                  <p className="text-center text-muted-foreground">Similar show suggestions not available</p>
                 </CardContent>
               </Card>
             </TabsContent>

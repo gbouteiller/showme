@@ -24,13 +24,13 @@ export function ShowItems({
     // @ts-expect-error - useConvexMutation integration with useMutation
     onSuccess: (_data, { preference }) => {
       const messages: Record<string, string> = {
-        favorite: "Série ajoutée à vos favoris avec succès",
-        unset: "Série retirée de vos favoris avec succès",
-        ignored: "Série ignorée avec succès",
+        favorite: "Show successfully added to favorites",
+        unset: "Show successfully removed from favorites",
+        ignored: "Show successfully ignored",
       };
       toast.success(messages[preference]);
     },
-    onError: () => toast.error("Une erreur s'est produite"),
+    onError: () => toast.error("An error occurred"),
   });
 
   const cyclePreference = (current: "favorite" | "unset" | "ignored"): "favorite" | "unset" | "ignored" => {
@@ -61,7 +61,7 @@ export function ShowItems({
                   <span className="icon-[lucide--info] h-8 w-8 text-muted-foreground" />
                 </div>
               )}
-              <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent">
+              <div className="absolute inset-0 bg-linear-to-r from-black/60 to-transparent">
                 <div className="flex h-full items-center justify-between p-2">
                   <div className="flex items-center gap-2">
                     {rating && (
@@ -79,7 +79,7 @@ export function ShowItems({
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Button
-                      aria-label={preference === "favorite" ? "Retirer des favoris" : "Ajouter aux favoris"}
+                      aria-label={preference === "favorite" ? "Remove from favorites" : "Add to favorites"}
                       className="h-6 w-6 bg-black/40 text-white hover:bg-black/60 hover:text-white"
                       disabled={isPending}
                       onClick={() => setPreference({ _id, preference: cyclePreference(preference) })}
@@ -93,7 +93,7 @@ export function ShowItems({
                       )}
                     </Button>
                     <Button
-                      aria-label={preference === "ignored" ? "Ne plus ignorer" : "Ignorer"}
+                      aria-label={preference === "ignored" ? "Stop ignoring" : "Ignore"}
                       className="h-6 w-6 bg-black/40 text-white hover:bg-black/60 hover:text-white"
                       disabled={isPending}
                       onClick={() => setPreference({ _id, preference: preference === "ignored" ? "unset" : "ignored" })}
@@ -104,7 +104,7 @@ export function ShowItems({
                     </Button>
                     <Link params={{ showId: `${apiId}` }} to="/series/$showId">
                       <Button
-                        aria-label="Voir les détails"
+                        aria-label="View details"
                         className="h-6 w-6 bg-black/40 text-white hover:bg-black/60 hover:text-white"
                         size="icon"
                         variant="ghost"

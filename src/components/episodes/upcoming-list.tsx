@@ -17,25 +17,25 @@ export function UpcomingEpisodesList({ limit }: UpcomingEpisodesListProps) {
 
   if (isLoading)
     return (
-      <List icon="icon-[lucide--calendar]" link={linkOptions({ to: "/episodes/a-venir" })} title="Prochains épisodes" variant="upcoming">
+      <List icon="icon-[lucide--calendar]" link={linkOptions({ to: "/episodes/a-venir" })} title="Upcoming Episodes" variant="upcoming">
         <UpcomingEpisodesListSkeleton />
       </List>
     );
 
   if (episodes?.length === 0)
     return (
-      <List icon="icon-[lucide--calendar]" link={linkOptions({ to: "/episodes/a-venir" })} title="Prochains épisodes" variant="upcoming">
+      <List icon="icon-[lucide--calendar]" link={linkOptions({ to: "/episodes/a-venir" })} title="Upcoming Episodes" variant="upcoming">
         <div className="flex flex-col items-center justify-center py-10 text-center">
-          <p className="mb-4 text-muted-foreground">Aucune série favorite en cours de diffusion avec des épisodes à venir</p>
+          <p className="mb-4 text-muted-foreground">No favorite shows currently airing with upcoming episodes</p>
           <Link to="/">
-            <Button>Rechercher des séries</Button>
+            <Button>Search shows</Button>
           </Link>
         </div>
       </List>
     );
 
   return (
-    <List icon="icon-[lucide--calendar]" link={linkOptions({ to: "/episodes/a-venir" })} title="Prochains épisodes" variant="upcoming">
+    <List icon="icon-[lucide--calendar]" link={linkOptions({ to: "/episodes/a-venir" })} title="Upcoming Episodes" variant="upcoming">
       <ItemGroup>
         {episodes?.map((episode) => (
           <EpisodeItem episode={episode} key={episode._id} variant="upcoming" />
