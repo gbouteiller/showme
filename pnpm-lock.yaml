@@ -148,8 +148,8 @@ importers:
         specifier: 2.3.11
         version: 2.3.11
       '@effect/language-service':
-        specifier: ^0.71.2
-        version: 0.71.2
+        specifier: ^0.72.0
+        version: 0.72.0
       '@tanstack/devtools-event-client':
         specifier: ^0.4.0
         version: 0.4.0
@@ -490,8 +490,8 @@ packages:
   '@cyberalien/svg-utils@1.0.11':
     resolution: {integrity: sha512-qEE9mnyI+avfGT3emKuRs3ucYkITeaV0Xi7VlYN41f+uGnZBecQP3jwz/AF437H9J4Q7qPClHKm4NiTYpNE6hA==}
 
-  '@effect/language-service@0.71.2':
-    resolution: {integrity: sha512-l5MaMxopOMjzSwEmQdIq5KeKqaLVLwkFdWeplCZw58O1kV1TYQIaG6uZ1nb5XvMtldLcfLu+44mdpiaW484fHg==}
+  '@effect/language-service@0.72.0':
+    resolution: {integrity: sha512-MWkyTPCXSs5Q3OIBWR3q24SA+ipkdWW7EBJBt6EPUzlzZxjJLXtLBhXpMoCFheSEM0FTWOHT4BRLh5lufsmjVw==}
     hasBin: true
 
   '@effect/platform@0.94.1':
@@ -3491,7 +3491,7 @@ snapshots:
     dependencies:
       '@iconify/types': 2.0.0
 
-  '@effect/language-service@0.71.2': {}
+  '@effect/language-service@0.72.0': {}
 
   '@effect/platform@0.94.1(effect@3.19.14)':
     dependencies:

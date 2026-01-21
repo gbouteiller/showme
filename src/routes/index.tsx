@@ -1,8 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, linkOptions } from "@tanstack/react-router";
 import { UnwatchedEpisodesList } from "@/components/episodes/unwatched-list";
 import { UpcomingEpisodesList } from "@/components/episodes/upcoming-list";
-import { TopRatedShowsList } from "@/components/shows/top-rated-list";
-import { TrendingShowsList } from "@/components/shows/trending-list";
+import { ShowsList } from "@/components/shows/list";
+import { api } from "@/convex/_generated/api";
 
 // ROUTE -----------------------------------------------------------------------------------------------------------------------------------
 export const Route = createFileRoute("/")({
@@ -21,8 +21,20 @@ function IndexPage() {
           <UpcomingEpisodesList limit={10} />
         </div>
         <div className="space-y-6">
-          <TopRatedShowsList limit={10} paginated />
-          <TrendingShowsList limit={10} paginated />
+          <ShowsList
+            icon="icon-[lucide--star]"
+            link={linkOptions({ to: "/series/a-decouvrir" })}
+            query={api.shows.readManyTopRatedUnsetPaginated}
+            title="Top Rated Shows"
+            variant="topRated"
+          />
+          {/* <ShowsList
+            icon="icon-[lucide--trending-up]"
+            link={linkOptions({ to: "/series/tendances" })}
+            query={api.shows.readManyTrendingUnsetPaginated}
+            title="Trending Shows"
+            variant="trending"
+          /> */}
         </div>
       </div>
     </div>
