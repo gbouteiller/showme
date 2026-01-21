@@ -5,9 +5,13 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { ActionCtx, type MutationCtx, type QueryCtx } from "@/convex/confect";
 import { optionMapEffect } from "@/lib/effect";
+import type { sChannelFields } from "@/schemas/channels";
+import type { sCountryCreate } from "@/schemas/countries";
 import type { Shows } from "@/schemas/shows";
 import { TvMaze } from "@/services/tvmaze";
 import { channelFromDoc, createMissingChannel } from "./channels";
+
+type ChannelCreatePayload = typeof sChannelFields.Type;
 
 // ACTIONS ---------------------------------------------------------------------------------------------------------------------------------
 export const fetchMissingShowsPerPage = ({ page }: FetchMissingShowsPerPageArgs): FetchMissingShowsPerPage =>
@@ -34,6 +38,115 @@ export function showFromDoc(db: Pick<QueryCtx["db"], "get">) {
     const channel = yield* optionMapEffect(channelDoc, channelFromDoc(db));
     return { ...doc, channel };
   });
+}
+
+// BATCH CREATION HELPERS ---------------------------------------------------------------------------------------------------------------------
+export function deduplicateCountries(dtos: Shows["Create"][]): Map<string, typeof sCountryCreate.Type> {
+  const countries = new Map<string, typeof sCountryCreate.Type>();
+  for (const dto of dtos) {
+    if (O.isSome(dto.channel) && O.isSome(dto.channel.value.country)) {
+      const country = dto.channel.value.country.value;
+      const key = `${country.code}`;
+      if (!countries.has(key)) {
+        countries.set(key, country);
+      }
+    }
+  }
+  return countries;
+}
+
+export function deduplicateChannels(
+  dtos: Shows["Create"][],
+  countryIdMap: Map<string, Id<"countries">>
+): Map<number, ChannelCreatePayload> {
+  const channels = new Map<number, ChannelCreatePayload>();
+  for (const dto of dtos) {
+    const channelOpt = dto.channel;
+    if (O.isSome(channelOpt)) {
+      const channel = channelOpt.value;
+      const channelWithCountry = channel as {
+        apiId: number;
+        name: string;
+        officialSite: O.Option<string>;
+        country: O.Option<{ code: string; name: string; timezone: string }>;
+      };
+      const key = channelWithCountry.apiId;
+      if (!channels.has(key)) {
+        const countryOpt = channelWithCountry.country;
+        const countryId = O.isSome(countryOpt) ? countryIdMap.get(countryOpt.value.code) : undefined;
+        const channelPayload: ChannelCreatePayload = {
+          apiId: channelWithCountry.apiId,
+          name: channelWithCountry.name,
+          officialSite: channelWithCountry.officialSite,
+          countryId: countryId !== undefined ? O.some(countryId) : O.none(),
+        };
+        channels.set(key, channelPayload);
+      }
+    }
+  }
+  return channels;
+}
+
+export function mapShowToFields(dto: Shows["Create"], channelIdMap: Map<number, Id<"channels">>): Shows["Fields"] {
+  const channelId = O.isSome(dto.channel) ? channelIdMap.get(dto.channel.value.apiId) : undefined;
+  const showFields: Shows["Fields"] = {
+    apiId: dto.apiId,
+    ended: dto.ended,
+    genres: dto.genres,
+    image: dto.image,
+    name: dto.name,
+    officialSite: dto.officialSite,
+    premiered: dto.premiered,
+    preference: dto.preference,
+    rating: dto.rating,
+    status: dto.status,
+    summary: dto.summary,
+    thumbnail: dto.thumbnail,
+    updated: dto.updated,
+    weight: dto.weight,
+    channelId: channelId !== undefined ? O.some(channelId) : O.none(),
+  };
+  return showFields;
+}
+
+export function createMissingCountriesBatch(db: MutationCtx["db"]) {
+  return (countries: Map<string, typeof sCountryCreate.Type>): E.Effect<Map<string, Id<"countries">>, ParseError> =>
+    E.gen(function* () {
+      const result = new Map<string, Id<"countries">>();
+      for (const [code, country] of countries) {
+        const existing = yield* db
+          .query("countries")
+          .withIndex("by_code", (q) => q.eq("code", code))
+          .first();
+        if (O.isSome(existing)) {
+          result.set(code, existing.value._id);
+        } else {
+          const _id = yield* db.insert("countries", country);
+          result.set(code, _id);
+        }
+      }
+      return result;
+    });
+}
+
+export function createMissingChannelsBatch(db: MutationCtx["db"]) {
+  return (channels: Map<number, ChannelCreatePayload>): E.Effect<Map<number, Id<"channels">>, ParseError> =>
+    E.gen(function* () {
+      const result = new Map<number, Id<"channels">>();
+      for (const [apiId, channel] of channels) {
+        const existing = yield* db
+          .query("channels")
+          .withIndex("by_api", (q) => q.eq("apiId", apiId))
+          .first();
+        if (O.isSome(existing)) {
+          result.set(apiId, existing.value._id);
+        } else {
+          const _id = yield* db.insert("channels", channel);
+          result.set(apiId, _id);
+        }
+      }
+      return result;
+    });
 }
 
 // CREATE ----------------------------------------------------------------------------------------------------------------------------------

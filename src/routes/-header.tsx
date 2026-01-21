@@ -13,8 +13,6 @@ import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { SearchBar } from "./-header.search-bar";
 
-// import { SearchBar } from "./-header.search-bar";
-
 // DATA ------------------------------------------------------------------------------------------------------------------------------------
 const headerRoutes = [
   linkOptions({

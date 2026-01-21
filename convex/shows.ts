@@ -4,9 +4,12 @@ import type { NoSuchElementException } from "effect/Cause";
 import type { ParseError } from "effect/ParseResult";
 import { startFetcher } from "@/functions/fetcher";
 import {
-  createMissingShow,
-  createShow,
+  createMissingChannelsBatch,
+  createMissingCountriesBatch,
+  deduplicateChannels,
+  deduplicateCountries,
   fetchMissingShowsPerPage,
+  mapShowToFields,
   readMaxApiIdShow,
   sFetchMissingShowsPerPageArgs,
   sFetchMissingShowsPerPageReturns,
@@ -154,6 +157,19 @@ export const readById = query({
     }),
 });
 
+export const searchByName = query({
+  args: S.Struct({
+    search: S.String,
+  }),
+  returns: S.Array(sShow),
+  handler: ({ search }) =>
+    E.gen(function* () {
+      const { db } = yield* QueryCtx;
+      const docs = yield* db.query("shows").withSearchIndex("search_name", (q) => q.search("name", search)).take(10);
+      return yield* E.all(docs.map(showFromDoc(db)));
+    }),
+});
+
 // MUTATION --------------------------------------------------------------------------------------------------------------------------------
 export const createManyMissing = mutation({
   args: S.Struct({ dtos: S.mutable(S.Array(sShowCreate)) }),
@@ -162,10 +178,15 @@ export const createManyMissing = mutation({
     E.gen(function* () {
       const { db } = yield* MutationCtx;
       const maxApiIdShow = yield* readMaxApiIdShow(db)();
+      const newShows = dtos.filter((dto) => O.isNone(maxApiIdShow) || dto.apiId > maxApiIdShow.value.apiId);
+      if (newShows.length === 0) return 0;
+      const uniqueCountries = deduplicateCountries(newShows);
+      const countryIdMap = yield* createMissingCountriesBatch(db)(uniqueCountries);
+      const uniqueChannels = deduplicateChannels(newShows, countryIdMap);
+      const channelIdMap = yield* createMissingChannelsBatch(db)(uniqueChannels);
       let createdCount = 0;
-      for (const dto of dtos) {
-        if (O.isSome(maxApiIdShow) && dto.apiId <= maxApiIdShow.value.apiId) continue;
-        yield* createShow(db)(dto);
+      for (const dto of newShows) {
+        yield* db.insert("shows", mapShowToFields(dto, channelIdMap));
         createdCount++;
       }
       return createdCount;
