@@ -39,6 +39,7 @@ export const readManyUnwatched = query({
       const docs = yield* db
         .query("episodes")
         .withIndex("by_unwatched", (q) => q.eq("isWatched", false).lt("airstamp", formatISO(Date.now())))
+        .order("desc")
         .collect();
 
       const episodes = yield* E.all(docs.map(episodeFromDoc(db)));
