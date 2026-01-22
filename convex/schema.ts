@@ -19,7 +19,7 @@ export const schema = defineSchema({
     .index("by_api", ["apiId"])
     .index("by_show_and_season", ["showId", "season", "airstamp"])
     .index("by_show", ["showId", "airstamp"])
-    .index("by_unwatched", ["isWatched", "airstamp"]),
+    .index("by_preference_and_unwatched", ["preference", "isWatched", "airstamp"]),
   persons: defineTable(sPersonFields).index("by_api", ["apiId"]),
   shows: defineTable(sShowFields)
     .index("by_api", ["apiId"])

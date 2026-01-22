@@ -4,6 +4,7 @@ import {
   episodeFromDoc,
   fetchShowEpisodes,
   readEpisodeByApiId,
+  readEpisodesByShow,
   sFetchShowEpisodesArgs,
   sFetchShowEpisodesReturns,
 } from "@/functions/episodes";
@@ -15,16 +16,13 @@ import type { Id } from "./_generated/dataModel";
 import { action, MutationCtx, mutation, QueryCtx, query } from "./confect";
 
 // QUERY -----------------------------------------------------------------------------------------------------------------------------------
-export const readByShowId = query({
+export const readByShow = query({
   args: sShowRef,
   returns: S.Array(sEpisode),
   handler: ({ _id }) =>
     E.gen(function* () {
       const { db } = yield* QueryCtx;
-      const docs = yield* db
-        .query("episodes")
-        .withIndex("by_show", (q) => q.eq("showId", _id))
-        .collect();
+      const docs = yield* readEpisodesByShow(db)({ _id });
       return yield* E.all(docs.map(episodeFromDoc(db)));
     }),
 });
@@ -38,12 +36,13 @@ export const readManyUnwatched = query({
 
       const docs = yield* db
         .query("episodes")
-        .withIndex("by_unwatched", (q) => q.eq("isWatched", false).lt("airstamp", formatISO(Date.now())))
+        .withIndex("by_preference_and_unwatched", (q) =>
+          q.eq("preference", "favorite").eq("isWatched", false).lt("airstamp", formatISO(Date.now()))
+        )
         .order("desc")
-        .collect();
+        .take(limit);
 
-      const episodes = yield* E.all(docs.map(episodeFromDoc(db)));
-      return episodes.filter(({ show: { preference } }) => preference === "favorite").slice(0, limit);
+      return yield* E.all(docs.map(episodeFromDoc(db)));
     }),
 });
 
@@ -56,11 +55,12 @@ export const readManyUpcoming = query({
 
       const docs = yield* db
         .query("episodes")
-        .withIndex("by_unwatched", (q) => q.eq("isWatched", false).gt("airstamp", formatISO(Date.now())))
-        .collect();
+        .withIndex("by_preference_and_unwatched", (q) =>
+          q.eq("preference", "favorite").eq("isWatched", false).gt("airstamp", formatISO(Date.now()))
+        )
+        .take(limit);
 
-      const episodes = yield* E.all(docs.map(episodeFromDoc(db)));
-      return episodes.filter(({ show: { preference } }) => preference === "favorite").slice(0, limit);
+      return yield* E.all(docs.map(episodeFromDoc(db)));
     }),
 });
 

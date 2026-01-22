@@ -2,6 +2,7 @@ import type { NotUniqueError } from "@rjdellecese/confect/server";
 import { Effect as E, Option as O, Schema as S } from "effect";
 import type { NoSuchElementException } from "effect/Cause";
 import type { ParseError } from "effect/ParseResult";
+import { readEpisodesByShow } from "@/functions/episodes";
 import { startFetcher } from "@/functions/fetcher";
 import {
   createMissingChannelsBatch,
@@ -217,10 +218,7 @@ export const setPreference = mutation({
 
       yield* db.patch(_id, { preference });
 
-      const episodes = yield* db
-        .query("episodes")
-        .withIndex("by_show", (q) => q.eq("showId", _id))
-        .collect();
+      const episodes = yield* readEpisodesByShow(db)({ _id });
       for (const episode of episodes) yield* db.patch(episode._id, { preference });
 
       if (preference === "favorite") {

@@ -6,7 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { ActionCtx, type QueryCtx } from "@/convex/confect";
 import { sId } from "@/schemas/convex";
 import type { Episodes } from "@/schemas/episodes";
-import { sShowDoc } from "@/schemas/shows";
+import { type Shows, sShowDoc } from "@/schemas/shows";
 import { TvMaze } from "@/services/tvmaze";
 import { showFromDoc } from "./shows";
 
@@ -41,4 +41,12 @@ export function readEpisodeByApiId(db: Pick<QueryCtx["db"], "query">) {
       .query("episodes")
       .withIndex("by_api", (q) => q.eq("apiId", apiId))
       .first();
+}
+
+export function readEpisodesByShow(db: Pick<QueryCtx["db"], "query">) {
+  return ({ _id }: Shows["Ref"]): E.Effect<Episodes["Doc"][]> =>
+    db
+      .query("episodes")
+      .withIndex("by_show", (q) => q.eq("showId", _id))
+      .collect();
 }
