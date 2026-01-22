@@ -46,6 +46,36 @@ export const readManyUnwatched = query({
     }),
 });
 
+export const readManyUnwatchedPaginated = query({
+  args: S.Struct({
+    today: S.String,
+    paginationOpts: S.Struct({
+      numItems: S.NonNegativeInt,
+      cursor: S.Union(S.Null, S.String),
+    }),
+  }),
+  returns: S.Struct({
+    page: S.Array(sEpisode),
+    continueCursor: S.Union(S.Null, S.String),
+    isDone: S.Boolean,
+  }),
+  handler: ({ paginationOpts, today }) =>
+    E.gen(function* () {
+      const { db } = yield* QueryCtx;
+      const results = yield* db
+        .query("episodes")
+        .withIndex("by_preference_and_unwatched", (q) => q.eq("preference", "favorite").eq("isWatched", false).lt("airstamp", today))
+        .order("desc")
+        .paginate(paginationOpts);
+      const page = yield* E.all(results.page.map(episodeFromDoc(db)));
+      return {
+        page,
+        continueCursor: results.continueCursor,
+        isDone: results.isDone,
+      };
+    }),
+});
+
 export const readManyUpcoming = query({
   args: S.Struct({ limit: S.optional(S.NonNegativeInt) }),
   returns: S.Array(sEpisode),
@@ -61,6 +91,35 @@ export const readManyUpcoming = query({
         .take(limit);
 
       return yield* E.all(docs.map(episodeFromDoc(db)));
+    }),
+});
+
+export const readManyUpcomingPaginated = query({
+  args: S.Struct({
+    today: S.String,
+    paginationOpts: S.Struct({
+      numItems: S.NonNegativeInt,
+      cursor: S.Union(S.Null, S.String),
+    }),
+  }),
+  returns: S.Struct({
+    page: S.Array(sEpisode),
+    continueCursor: S.Union(S.Null, S.String),
+    isDone: S.Boolean,
+  }),
+  handler: ({ paginationOpts, today }) =>
+    E.gen(function* () {
+      const { db } = yield* QueryCtx;
+      const results = yield* db
+        .query("episodes")
+        .withIndex("by_preference_and_unwatched", (q) => q.eq("preference", "favorite").eq("isWatched", false).gt("airstamp", today))
+        .paginate(paginationOpts);
+      const page = yield* E.all(results.page.map(episodeFromDoc(db)));
+      return {
+        page,
+        continueCursor: results.continueCursor,
+        isDone: results.isDone,
+      };
     }),
 });
 

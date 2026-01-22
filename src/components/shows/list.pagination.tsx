@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import {
   Pagination,
   PaginationContent,
@@ -13,8 +12,6 @@ import { cn } from "@/lib/utils";
 // MAIN ------------------------------------------------------------------------------------------------------------------------------------
 export function ShowsListPagination({ currentPage, hasNextPage, goToPage, isLoading }: ShowsListPaginationProps) {
   const hasPrevPage = currentPage > 1;
-
-  useEffect(() => console.log(currentPage, hasNextPage, isLoading), [currentPage, hasNextPage, isLoading]);
 
   return (
     <div className="mt-4">

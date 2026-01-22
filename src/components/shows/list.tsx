@@ -12,7 +12,6 @@ import { ShowsListPagination } from "./list.pagination";
 
 // MAIN ------------------------------------------------------------------------------------------------------------------------------------
 export function ShowsList({ cursor, page, setCursor, setPage, query, ...props }: ShowsListProps) {
-  // const viewTransition = useViewTransition();
   const [cursors, setCursors] = useState<Record<number, string | null>>({ 1: null });
 
   const currentCursor = cursor ?? cursors[page] ?? null;
@@ -43,7 +42,7 @@ export function ShowsList({ cursor, page, setCursor, setPage, query, ...props }:
             <Spinner className="size-8 text-primary" />
           </div>
         )}
-        {isLoading && (
+        {isLoading ? (
           <div className="space-y-2.5">
             {Array.from({ length: 10 }, (_, i) => i).map((index) => (
               <div
@@ -55,8 +54,7 @@ export function ShowsList({ cursor, page, setCursor, setPage, query, ...props }:
               </div>
             ))}
           </div>
-        )}
-        {!isLoading && (
+        ) : (
           <div className="space-y-2.5">
             {data?.page.map((show) => (
               <ShowItem key={show._id} show={show} variant={props.variant} />
