@@ -16,7 +16,7 @@ export const fetchShowEpisodes = ({ _id, apiId }: FetchShowEpisodesArgs): FetchS
     const { runMutation } = yield* ActionCtx;
     const { fetchShowEpisodes } = yield* TvMaze;
     const dtos = yield* fetchShowEpisodes(apiId);
-    return yield* runMutation(api.episodes.createManyMissingForShow, { showId: _id, dtos });
+    return yield* runMutation(api.episodes.createManyMissingForShow, { dtos, showId: _id });
   });
 export const sFetchShowEpisodesArgs = sShowDoc.pick("_id", "apiId");
 export const sFetchShowEpisodesReturns = S.Array(sId("episodes"));

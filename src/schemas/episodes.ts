@@ -13,6 +13,7 @@ export const sEpisodeFields = S.Struct({
   isWatched: S.Boolean,
   name: S.String,
   number: S.NullOr(S.NonNegativeInt),
+  preference: S.Literal("favorite", "ignored", "unset"),
   rating: S.NullOr(S.NonNegative),
   runtime: S.NullOr(S.NonNegativeInt),
   season: S.NonNegativeInt,
@@ -55,7 +56,7 @@ export const sEpisodeDto = S.transformOrFail(
 );
 
 // CREATE ----------------------------------------------------------------------------------------------------------------------------------
-export const sEpisodeCreate = sEpisodeFields.omit("showId");
+export const sEpisodeCreate = sEpisodeFields.omit("showId", "preference");
 
 // TYPES -----------------------------------------------------------------------------------------------------------------------------------
 export type Episodes = {

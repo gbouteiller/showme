@@ -71,11 +71,11 @@ export const createManyMissingForShow = mutation({
   handler: ({ dtos, showId }) =>
     E.gen(function* () {
       const { db } = yield* MutationCtx;
+      const { preference } = (yield* db.get(showId)).pipe(O.getOrThrow);
       const ids: Id<"episodes">[] = [];
-      for (const dto of dtos) {
-        if ((yield* readEpisodeByApiId(db)({ apiId: dto.apiId })).pipe(O.isSome)) continue;
-        ids.push(yield* db.insert("episodes", { ...dto, showId }));
-      }
+      for (const dto of dtos)
+        if ((yield* readEpisodeByApiId(db)({ apiId: dto.apiId })).pipe(O.isNone))
+          ids.push(yield* db.insert("episodes", { ...dto, preference, showId }));
       return ids;
     }),
 });

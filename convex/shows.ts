@@ -165,7 +165,10 @@ export const searchByName = query({
   handler: ({ search }) =>
     E.gen(function* () {
       const { db } = yield* QueryCtx;
-      const docs = yield* db.query("shows").withSearchIndex("search_name", (q) => q.search("name", search)).take(10);
+      const docs = yield* db
+        .query("shows")
+        .withSearchIndex("search_name", (q) => q.search("name", search))
+        .take(10);
       return yield* E.all(docs.map(showFromDoc(db)));
     }),
 });
@@ -211,9 +214,19 @@ export const setPreference = mutation({
   handler: ({ _id, preference }): E.Effect<null, NoSuchElementException | ParseError, MutationCtx> =>
     E.gen(function* () {
       const { db, scheduler } = yield* MutationCtx;
-      const { apiId } = (yield* db.get(_id)).pipe(O.getOrThrow);
+
       yield* db.patch(_id, { preference });
-      if (preference === "favorite") yield* scheduler.runAfter(0, api.episodes.fetchForShow, { _id, apiId });
+
+      const episodes = yield* db
+        .query("episodes")
+        .withIndex("by_show", (q) => q.eq("showId", _id))
+        .collect();
+      for (const episode of episodes) yield* db.patch(episode._id, { preference });
+
+      if (preference === "favorite") {
+        const { apiId } = (yield* db.get(_id)).pipe(O.getOrThrow);
+        yield* scheduler.runAfter(0, api.episodes.fetchForShow, { _id, apiId });
+      }
       return null;
     }),
 });
