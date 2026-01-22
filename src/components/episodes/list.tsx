@@ -6,18 +6,19 @@ import type { FunctionReference } from "convex/server";
 import { format } from "date-fns";
 import { type ReactNode, useEffect, useState } from "react";
 import { List } from "@/components/list";
+import { ListPagination } from "@/components/list.pagination";
 import { Button } from "@/components/ui/button";
 import { ItemGroup } from "@/components/ui/item";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Episodes } from "@/schemas/episodes";
-import { ShowsListPagination } from "../shows/list.pagination";
 import { EpisodeItem } from "./item";
 
 // MAIN ------------------------------------------------------------------------------------------------------------------------------------
-export function EpisodesList({ cursor, emptyMessage, page, query, setCursor, setPage, ...props }: EpisodesListProps) {
-  const [cursors, setCursors] = useState<Record<number, string | null>>({ 1: null });
+export function EpisodesList({ emptyMessage, query, ...props }: EpisodesListProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [cursors, setCursors] = useState<(string | null)[]>([null]);
 
-  const currentCursor = cursor ?? cursors[page] ?? null;
+  const currentCursor = cursors[currentPage - 1] ?? null;
 
   const { data, isLoading, isFetching, isPlaceholderData } = useQuery({
     ...convexQuery(query, {
@@ -29,38 +30,33 @@ export function EpisodesList({ cursor, emptyMessage, page, query, setCursor, set
 
   useEffect(() => {
     if (!data?.continueCursor || isPlaceholderData) return;
-    setCursors((prev) => ({ ...prev, [page + 1]: data.continueCursor }));
-  }, [data?.continueCursor, isPlaceholderData, page]);
+    setCursors((prev) => {
+      if (prev[currentPage] === data.continueCursor) return prev;
+      const next = [...prev];
+      next[currentPage] = data.continueCursor;
+      return next;
+    });
+  }, [data?.continueCursor, isPlaceholderData, currentPage]);
 
   const hasNextPage = data ? !data.isDone : false;
-
-  const handlePageChange = (newPage: number) => {
-    const newCursor = cursors[newPage] ?? null;
-    setCursor(newCursor);
-    setPage(newPage);
-  };
 
   return (
     <List {...props}>
       <Content emptyMessage={emptyMessage} episodes={data?.page ?? []} isLoading={isLoading} variant={props.variant} />
-      <ShowsListPagination currentPage={page} goToPage={handlePageChange} hasNextPage={hasNextPage} isLoading={isFetching} />
+      <ListPagination currentPage={currentPage} goToPage={setCurrentPage} hasNextPage={hasNextPage} isLoading={isFetching} />
     </List>
   );
 }
 export type EpisodesListProps = {
-  cursor: string | null;
   emptyMessage: ReactNode;
   icon: string;
   link: LinkOptions;
-  page: number;
   query: FunctionReference<
     "query",
     "public",
     { paginationOpts: { numItems: number; cursor: string | null }; today: string },
     { page: readonly Episodes["Entity"][]; continueCursor: string | null; isDone: boolean }
   >;
-  setCursor: (cursor: string | null) => void;
-  setPage: (page: number) => void;
   title: string;
   variant: "upcoming" | "unwatched";
 };

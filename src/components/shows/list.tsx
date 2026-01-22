@@ -4,17 +4,18 @@ import type { LinkOptions } from "@tanstack/react-router";
 import type { FunctionReference } from "convex/server";
 import { useEffect, useState } from "react";
 import { List } from "@/components/list";
+import { ListPagination } from "@/components/list.pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import type { Shows } from "@/schemas/shows";
 import { ShowItem } from "./item";
-import { ShowsListPagination } from "./list.pagination";
 
 // MAIN ------------------------------------------------------------------------------------------------------------------------------------
-export function ShowsList({ cursor, page, setCursor, setPage, query, ...props }: ShowsListProps) {
-  const [cursors, setCursors] = useState<Record<number, string | null>>({ 1: null });
+export function ShowsList({ query, ...props }: ShowsListProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [cursors, setCursors] = useState<(string | null)[]>([null]);
 
-  const currentCursor = cursor ?? cursors[page] ?? null;
+  const currentCursor = cursors[currentPage - 1] ?? null;
 
   const { data, isLoading, isFetching, isPlaceholderData } = useQuery({
     ...convexQuery(query, { paginationOpts: { numItems: 10, cursor: currentCursor } }),
@@ -23,16 +24,15 @@ export function ShowsList({ cursor, page, setCursor, setPage, query, ...props }:
 
   useEffect(() => {
     if (!data?.continueCursor || isPlaceholderData) return;
-    setCursors((prev) => ({ ...prev, [page + 1]: data.continueCursor }));
-  }, [data?.continueCursor, isPlaceholderData, page]);
+    setCursors((prev) => {
+      if (prev[currentPage] === data.continueCursor) return prev;
+      const next = [...prev];
+      next[currentPage] = data.continueCursor;
+      return next;
+    });
+  }, [data?.continueCursor, isPlaceholderData, currentPage]);
 
   const hasNextPage = data ? !data.isDone : false;
-
-  const handlePageChange = (newPage: number) => {
-    const newCursor = cursors[newPage] ?? null;
-    setCursor(newCursor);
-    setPage(newPage);
-  };
 
   return (
     <List {...props}>
@@ -61,24 +61,20 @@ export function ShowsList({ cursor, page, setCursor, setPage, query, ...props }:
             ))}
           </div>
         )}
-        <ShowsListPagination currentPage={page} goToPage={handlePageChange} hasNextPage={hasNextPage} isLoading={isFetching} />
+        <ListPagination currentPage={currentPage} goToPage={setCurrentPage} hasNextPage={hasNextPage} isLoading={isFetching} />
       </div>
     </List>
   );
 }
 export type ShowsListProps = {
-  cursor: string | null;
   icon: string;
   link: LinkOptions;
-  page: number;
   query: FunctionReference<
     "query",
     "public",
     { paginationOpts: { numItems: number; cursor: string | null } },
     { page: readonly Shows["Entity"][]; continueCursor: string | null; isDone: boolean }
   >;
-  setCursor: (cursor: string | null) => void;
-  setPage: (page: number) => void;
   title: string;
   variant: "topRated" | "trending";
 };

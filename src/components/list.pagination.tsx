@@ -10,7 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 
 // MAIN ------------------------------------------------------------------------------------------------------------------------------------
-export function ShowsListPagination({ currentPage, hasNextPage, goToPage, isLoading }: ShowsListPaginationProps) {
+export function ListPagination({ currentPage, hasNextPage, goToPage, isLoading }: ListPaginationProps) {
   const hasPrevPage = currentPage > 1;
 
   return (
@@ -81,7 +81,7 @@ export function ShowsListPagination({ currentPage, hasNextPage, goToPage, isLoad
     </div>
   );
 }
-type ShowsListPaginationProps = {
+type ListPaginationProps = {
   currentPage: number;
   hasNextPage: boolean;
   goToPage: (page: number) => void;
