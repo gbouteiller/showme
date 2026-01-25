@@ -1,42 +1,43 @@
 import { useConvexPaginatedQuery } from "@convex-dev/react-query";
 import type { LinkOptions } from "@tanstack/react-router";
 import type { FunctionReference } from "convex/server";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { List } from "@/components/list";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { PaginationArgs, PaginationReturns } from "@/schemas/convex";
 import type { Shows } from "@/schemas/shows";
-import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "../ui/pagination";
+import { ListPagination } from "../list.pagination";
 import { Spinner } from "../ui/spinner";
 import { ShowItem } from "./item";
 
 // MAIN ------------------------------------------------------------------------------------------------------------------------------------
 export function ShowsList({ query, ...props }: ShowsListProps) {
-  const [startIndex, setStartIndex] = useState(0);
-  const [shouldUpdateIndex, setShouldUpdateIndex] = useState(false);
+  const itemsPerPage = 10;
+  const itemsPerFetch = 20;
+  const [currentPage, setCurrentPage] = useState(1);
+  const [nextPage, setNextPage] = useState(-1);
 
-  const { isLoading, loadMore, results: data, status } = useConvexPaginatedQuery(query, {}, { initialNumItems: 20 });
+  const { isLoading, loadMore, results: data, status } = useConvexPaginatedQuery(query, {}, { initialNumItems: itemsPerFetch });
+
+  const hasEnoughFetchedItems = useMemo(() => data.length > currentPage * itemsPerPage, [data.length, currentPage]);
+  const hasNextPage = useMemo(() => status === "CanLoadMore" || hasEnoughFetchedItems, [hasEnoughFetchedItems, status]);
 
   useEffect(() => {
-    if (data.length > startIndex + 10 && shouldUpdateIndex) {
-      setShouldUpdateIndex(false);
-      setStartIndex((prev) => prev + 10);
+    if (hasEnoughFetchedItems && nextPage !== -1) {
+      setNextPage(-1);
+      setCurrentPage(nextPage);
     }
-  }, [data.length, shouldUpdateIndex, startIndex]);
-
-  const handleNextPage = () => {
-    if (data.length >= startIndex + 20) return setStartIndex((prev) => prev + 10);
-    if (status !== "CanLoadMore") return;
-    setShouldUpdateIndex(true);
-    loadMore(20);
-  };
-
-  const handlePreviousPage = () => {
-    if (startIndex > 9) setStartIndex((prev) => prev - 10);
-  };
+  }, [hasEnoughFetchedItems, nextPage]);
 
   const handleSetPreference = () => {
-    if (data.length - 1 < startIndex + 10 && status === "CanLoadMore") loadMore(20);
+    if (data.length - 1 < currentPage * itemsPerPage && status === "CanLoadMore") loadMore(itemsPerFetch);
+  };
+
+  const goToPage = (page: number) => {
+    if (page < 1 || (status === "Exhausted" && page * itemsPerPage - data.length >= itemsPerPage)) return;
+    if (data.length >= page * itemsPerPage) return setCurrentPage(page);
+    setNextPage(page);
+    loadMore(page * itemsPerPage - data.length);
   };
 
   return (
@@ -59,22 +60,10 @@ export function ShowsList({ query, ...props }: ShowsListProps) {
                 </div>
               ))
             : data
-                .slice(startIndex, startIndex + 10)
+                .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                 .map((show) => <ShowItem key={show._id} onSetPreference={handleSetPreference} show={show} variant={props.variant} />)}
         </div>
-        {/* <ListPagination currentPage={currentPage} goToPage={setCurrentPage} hasNextPage={hasNextPage} isLoading={isFetching} /> */}
-        <div className="mt-4">
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious onClick={handlePreviousPage} />
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationNext onClick={handleNextPage} />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
+        <ListPagination className="mt-4" currentPage={currentPage} goToPage={goToPage} hasNextPage={hasNextPage} isLoading={isLoading} />
       </div>
     </List>
   );

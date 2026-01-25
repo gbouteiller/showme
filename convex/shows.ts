@@ -60,7 +60,6 @@ export const readPaginatedTopRatedUnset = query({
         .withIndex("by_preference_and_rating", (q) => q.eq("preference", "unset"))
         .order("desc")
         .paginate(paginationOpts);
-      console.log(pagination);
       return { ...pagination, page: yield* E.all(pagination.page.map(showFromDoc(db))) };
     }),
 });

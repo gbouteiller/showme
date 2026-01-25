@@ -8,6 +8,7 @@ export const sId = Id.Id;
 // PAGINATION ------------------------------------------------------------------------------------------------------------------------------
 export const sPaginationOpts = S.Struct({
   cursor: S.NullOr(S.String),
+  endCursor: S.optional(S.String),
   id: S.Number,
   numItems: S.NonNegativeInt,
 });
