@@ -8,24 +8,24 @@ If it is TanStack related, use `tanstack` tools.
 
 ```bash
 # Development
-pnpm dev              # Start dev server on port 3000
-pnpm build            # Build for production
-pnpm preview          # Preview production build
-pnpm deploy           # Build and deploy to Cloudflare Workers
+bun dev              # Start dev server on port 3000
+bun build            # Build for production
+bun preview          # Preview production build
+bun deploy           # Build and deploy to Cloudflare Workers
 
 # Testing
-pnpm test             # Run all tests
-pnpm test --run <pattern>  # Run tests matching pattern
+bun test             # Run all tests
+bun test --run <pattern>  # Run tests matching pattern
 
 # Linting & Formatting
-pnpm format           # Format code with Biome
-pnpm lint             # Lint code with Biome
-pnpm check            # Full Biome check (lint + format)
-pnpm dlx ultracite fix    # Auto-fix all Ultracite issues
-pnpm dlx ultracite check  # Check for Ultracite issues
+bun format           # Format code with Biome
+bun lint             # Lint code with Biome
+bun check            # Full Biome check (lint + format)
+bunx ultracite fix    # Auto-fix all Ultracite issues
+bunx ultracite check  # Check for Ultracite issues
 
 # Adding Components
-pnpm dlx shadcn@latest add <component>  # Add shadcn/ui component
+bunx shadcn@latest add <component>  # Add shadcn/ui component
 ```
 
 ## Code Style Guidelines
@@ -136,13 +136,13 @@ pnpm dlx shadcn@latest add <component>  # Add shadcn/ui component
 - Use `<Image />` component (or equivalent) over `<img>` tags
 
 ### Shadcn UI
-- Add components using latest shadcn: `pnpm dlx shadcn@latest add button`
+- Add components using latest shadcn: `bunx shadcn@latest add button`
 - Use `@base-ui/react` primitives (Button, Dialog, etc.)
 - Components use cva for variants with proper typing
 
 ## Before Committing
 
-1. Run `pnpm dlx ultracite fix` to auto-fix all formatting/linting issues
-2. Run `pnpm test` to ensure tests pass
-3. Run `pnpm check` to verify code quality
-4. Run `pnpm build` to ensure production build succeeds
+1. Run `bunx ultracite fix` to auto-fix all formatting/linting issues
+2. Run `bun test` to ensure tests pass
+3. Run `bun check` to verify code quality
+4. Run `bun build` to ensure production build succeeds

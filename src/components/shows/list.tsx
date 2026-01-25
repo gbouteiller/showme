@@ -1,67 +1,80 @@
-import { convexQuery } from "@convex-dev/react-query";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useConvexPaginatedQuery } from "@convex-dev/react-query";
 import type { LinkOptions } from "@tanstack/react-router";
 import type { FunctionReference } from "convex/server";
 import { useEffect, useState } from "react";
 import { List } from "@/components/list";
-import { ListPagination } from "@/components/list.pagination";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Spinner } from "@/components/ui/spinner";
+import type { PaginationArgs, PaginationReturns } from "@/schemas/convex";
 import type { Shows } from "@/schemas/shows";
+import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "../ui/pagination";
+import { Spinner } from "../ui/spinner";
 import { ShowItem } from "./item";
 
 // MAIN ------------------------------------------------------------------------------------------------------------------------------------
 export function ShowsList({ query, ...props }: ShowsListProps) {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [cursors, setCursors] = useState<(string | null)[]>([null]);
+  const [startIndex, setStartIndex] = useState(0);
+  const [shouldUpdateIndex, setShouldUpdateIndex] = useState(false);
 
-  const currentCursor = cursors[currentPage - 1] ?? null;
-
-  const { data, isLoading, isFetching, isPlaceholderData } = useQuery({
-    ...convexQuery(query, { paginationOpts: { numItems: 10, cursor: currentCursor } }),
-    placeholderData: keepPreviousData,
-  });
+  const { isLoading, loadMore, results: data, status } = useConvexPaginatedQuery(query, {}, { initialNumItems: 20 });
 
   useEffect(() => {
-    if (!data?.continueCursor || isPlaceholderData) return;
-    setCursors((prev) => {
-      if (prev[currentPage] === data.continueCursor) return prev;
-      const next = [...prev];
-      next[currentPage] = data.continueCursor;
-      return next;
-    });
-  }, [data?.continueCursor, isPlaceholderData, currentPage]);
+    if (data.length > startIndex + 10 && shouldUpdateIndex) {
+      setShouldUpdateIndex(false);
+      setStartIndex((prev) => prev + 10);
+    }
+  }, [data.length, shouldUpdateIndex, startIndex]);
 
-  const hasNextPage = data ? !data.isDone : false;
+  const handleNextPage = () => {
+    if (data.length >= startIndex + 20) return setStartIndex((prev) => prev + 10);
+    if (status !== "CanLoadMore") return;
+    setShouldUpdateIndex(true);
+    loadMore(20);
+  };
+
+  const handlePreviousPage = () => {
+    if (startIndex > 9) setStartIndex((prev) => prev - 10);
+  };
+
+  const handleSetPreference = () => {
+    if (data.length - 1 < startIndex + 10 && status === "CanLoadMore") loadMore(20);
+  };
 
   return (
     <List {...props}>
       <div className="relative py-2">
-        {isPlaceholderData && (
+        {isLoading && data.length > 0 && (
           <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/60 backdrop-blur-sm transition-opacity duration-300">
             <Spinner className="size-8 text-primary" />
           </div>
         )}
-        {isLoading ? (
-          <div className="space-y-2.5">
-            {Array.from({ length: 10 }, (_, i) => i).map((index) => (
-              <div
-                className="fade-in-0 animate-in overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm"
-                key={index}
-                style={{ animationDelay: `${index * 30}ms`, animationFillMode: "backwards" }}
-              >
-                <Skeleton className="h-16 w-full" />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-2.5">
-            {data?.page.map((show) => (
-              <ShowItem key={show._id} show={show} variant={props.variant} />
-            ))}
-          </div>
-        )}
-        <ListPagination currentPage={currentPage} goToPage={setCurrentPage} hasNextPage={hasNextPage} isLoading={isFetching} />
+        <div className="space-y-2.5">
+          {isLoading && data.length === 0
+            ? Array.from({ length: 10 }, (_, i) => i).map((index) => (
+                <div
+                  className="fade-in-0 animate-in overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm"
+                  key={index}
+                  style={{ animationDelay: `${index * 30}ms`, animationFillMode: "backwards" }}
+                >
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ))
+            : data
+                .slice(startIndex, startIndex + 10)
+                .map((show) => <ShowItem key={show._id} onSetPreference={handleSetPreference} show={show} variant={props.variant} />)}
+        </div>
+        {/* <ListPagination currentPage={currentPage} goToPage={setCurrentPage} hasNextPage={hasNextPage} isLoading={isFetching} /> */}
+        <div className="mt-4">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious onClick={handlePreviousPage} />
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext onClick={handleNextPage} />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       </div>
     </List>
   );
@@ -69,12 +82,7 @@ export function ShowsList({ query, ...props }: ShowsListProps) {
 export type ShowsListProps = {
   icon: string;
   link: LinkOptions;
-  query: FunctionReference<
-    "query",
-    "public",
-    { paginationOpts: { numItems: number; cursor: string | null } },
-    { page: readonly Shows["Entity"][]; continueCursor: string | null; isDone: boolean }
-  >;
+  query: FunctionReference<"query", "public", PaginationArgs, PaginationReturns<Shows["Entity"], Shows["Entry"]>>;
   title: string;
   variant: "topRated" | "trending";
 };

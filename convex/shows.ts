@@ -16,6 +16,7 @@ import {
   sFetchMissingShowsPerPageReturns,
   showFromDoc,
 } from "@/functions/shows";
+import { sPaginationArgs, sPaginationReturns } from "@/schemas/convex";
 import { sShow, sShowCreate, sShowRef } from "@/schemas/shows";
 import { TvMaze } from "@/services/tvmaze";
 import { api } from "./_generated/api";
@@ -48,47 +49,19 @@ export const readManyTopRated = query({
     }),
 });
 
-export const readManyTopRatedUnset = query({
-  args: S.Struct({ limit: S.optional(S.NonNegativeInt) }),
-  returns: S.Array(sShow),
-  handler: ({ limit = 10 }) =>
-    E.gen(function* () {
-      const { db } = yield* QueryCtx;
-      const docs = yield* db
-        .query("shows")
-        .withIndex("by_preference_and_rating", (q) => q.eq("preference", "unset"))
-        .order("desc")
-        .take(limit);
-      return yield* E.all(docs.map(showFromDoc(db)));
-    }),
-});
-
-export const readManyTopRatedUnsetPaginated = query({
-  args: S.Struct({
-    paginationOpts: S.Struct({
-      numItems: S.NonNegativeInt,
-      cursor: S.Union(S.Null, S.String),
-    }),
-  }),
-  returns: S.Struct({
-    page: S.Array(sShow),
-    continueCursor: S.Union(S.Null, S.String),
-    isDone: S.Boolean,
-  }),
+export const readPaginatedTopRatedUnset = query({
+  args: sPaginationArgs,
+  returns: sPaginationReturns(sShow),
   handler: ({ paginationOpts }) =>
     E.gen(function* () {
       const { db } = yield* QueryCtx;
-      const results = yield* db
+      const pagination = yield* db
         .query("shows")
         .withIndex("by_preference_and_rating", (q) => q.eq("preference", "unset"))
         .order("desc")
         .paginate(paginationOpts);
-      const page = yield* E.all(results.page.map(showFromDoc(db)));
-      return {
-        page,
-        continueCursor: results.continueCursor,
-        isDone: results.isDone,
-      };
+      console.log(pagination);
+      return { ...pagination, page: yield* E.all(pagination.page.map(showFromDoc(db))) };
     }),
 });
 
@@ -103,47 +76,18 @@ export const readManyTrending = query({
     }),
 });
 
-export const readManyTrendingUnset = query({
-  args: S.Struct({ limit: S.optional(S.NonNegativeInt) }),
-  returns: S.Array(sShow),
-  handler: ({ limit = 10 }) =>
-    E.gen(function* () {
-      const { db } = yield* QueryCtx;
-      const docs = yield* db
-        .query("shows")
-        .withIndex("by_preference_and_weight", (q) => q.eq("preference", "unset"))
-        .order("desc")
-        .take(limit);
-      return yield* E.all(docs.map(showFromDoc(db)));
-    }),
-});
-
-export const readManyTrendingUnsetPaginated = query({
-  args: S.Struct({
-    paginationOpts: S.Struct({
-      numItems: S.NonNegativeInt,
-      cursor: S.Union(S.Null, S.String),
-    }),
-  }),
-  returns: S.Struct({
-    page: S.Array(sShow),
-    continueCursor: S.Union(S.Null, S.String),
-    isDone: S.Boolean,
-  }),
+export const readPaginatedTrendingUnset = query({
+  args: sPaginationArgs,
+  returns: sPaginationReturns(sShow),
   handler: ({ paginationOpts }) =>
     E.gen(function* () {
       const { db } = yield* QueryCtx;
-      const results = yield* db
+      const pagination = yield* db
         .query("shows")
         .withIndex("by_preference_and_weight", (q) => q.eq("preference", "unset"))
         .order("desc")
         .paginate(paginationOpts);
-      const page = yield* E.all(results.page.map(showFromDoc(db)));
-      return {
-        page,
-        continueCursor: results.continueCursor,
-        isDone: results.isDone,
-      };
+      return { ...pagination, page: yield* E.all(pagination.page.map(showFromDoc(db))) };
     }),
 });
 

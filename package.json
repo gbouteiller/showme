@@ -48,7 +48,7 @@
     "date-fns": "^4.1.0",
     "effect": "^3.19.14",
     "es-toolkit": "^1.44.0",
-    "lucide-react": "^0.562.0",
+    "lucide-react": "^0.563.0",
     "next-themes": "^0.4.6",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
@@ -60,7 +60,7 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.3.11",
+    "@biomejs/biome": "2.3.12",
     "@effect/language-service": "^0.72.0",
     "@tanstack/devtools-event-client": "^0.4.0",
     "@tanstack/devtools-vite": "^0.4.1",
@@ -77,6 +77,5 @@
     "vitest": "^4.0.17",
     "web-vitals": "^5.1.0",
     "wrangler": "^4.60.0"
-  },
-  "packageManager": "pnpm@10.18.0+sha512.e804f889f1cecc40d572db084eec3e4881739f8dec69c0ff10d2d1beff9a4e309383ba27b5b750059d7f4c149535b6cd0d2cb1ed3aeb739239a4284a68f40cfa"
+  }
 }

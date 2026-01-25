@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { UpcomingEpisodesList } from "@/components/episodes/upcoming-list";
+import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { EpisodesList } from "@/components/episodes/list";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { api } from "@/convex/_generated/api";
 
 // ROUTE -----------------------------------------------------------------------------------------------------------------------------------
 export const Route = createFileRoute("/episodes/a-venir")({
@@ -22,7 +23,14 @@ function UpcomingEpisodesPage() {
           <CardDescription>Stay informed about upcoming releases of your favorite shows</CardDescription>
         </CardHeader>
         <CardContent>
-          <UpcomingEpisodesList />
+          <EpisodesList
+            emptyMessage="No favorite shows currently airing with upcoming episodes"
+            icon="icon-[lucide--calendar]"
+            link={linkOptions({ to: "/episodes/a-venir" })}
+            query={api.episodes.readManyUpcomingPaginated}
+            title="Upcoming Episodes"
+            variant="upcoming"
+          />
         </CardContent>
       </Card>
     </div>

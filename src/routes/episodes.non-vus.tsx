@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { UnwatchedEpisodesList } from "@/components/episodes/unwatched-list";
+import { createFileRoute, linkOptions } from "@tanstack/react-router";
+import { EpisodesList } from "@/components/episodes/list";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { api } from "@/convex/_generated/api";
 
 // ROUTE -----------------------------------------------------------------------------------------------------------------------------------
 export const Route = createFileRoute("/episodes/non-vus")({
@@ -22,7 +23,14 @@ function UnwatchedEpisodesPage() {
           <CardDescription>Mark episodes as watched to track your progress</CardDescription>
         </CardHeader>
         <CardContent>
-          <UnwatchedEpisodesList />
+          <EpisodesList
+            emptyMessage="You don't have any unwatched episodes yet"
+            icon="icon-[lucide--eye]"
+            link={linkOptions({ to: "/episodes/non-vus" })}
+            query={api.episodes.readManyUnwatchedPaginated}
+            title="Unwatched Episodes"
+            variant="unwatched"
+          />
         </CardContent>
       </Card>
     </div>

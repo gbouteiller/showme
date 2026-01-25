@@ -21,7 +21,7 @@ const ITEM = {
   star: cva("icon-[line-md--star-filled] size-2.5"),
 };
 
-export function ShowItem({ className, show, variant }: ShowItemProps) {
+export function ShowItem({ className, onSetPreference, show, variant }: ShowItemProps) {
   const { mutate: setPreference, isPending } = useMutation({
     mutationFn: useConvexMutation(api.shows.setPreference),
   });
@@ -29,6 +29,7 @@ export function ShowItem({ className, show, variant }: ShowItemProps) {
   const handleSetPreference = (preference: "favorite" | "ignored" | "unset") => (event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
+    onSetPreference?.();
     setPreference({ _id: show._id, preference });
   };
 
@@ -79,6 +80,7 @@ export function ShowItem({ className, show, variant }: ShowItemProps) {
 }
 type ShowItemProps = {
   className?: string;
+  onSetPreference?: () => void;
   show: Shows["Entity"];
   variant: VariantProps<typeof Badge>["variant"];
 };

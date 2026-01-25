@@ -37,14 +37,14 @@ function IndexPage() {
           <ShowsList
             icon="icon-[lucide--star]"
             link={linkOptions({ to: "/series/a-decouvrir" })}
-            query={api.shows.readManyTopRatedUnsetPaginated}
+            query={api.shows.readPaginatedTopRatedUnset}
             title="Top Rated Shows"
             variant="topRated"
           />
           <ShowsList
             icon="icon-[lucide--trending-up]"
             link={linkOptions({ to: "/series/tendances" })}
-            query={api.shows.readManyTrendingUnsetPaginated}
+            query={api.shows.readPaginatedTrendingUnset}
             title="Trending Shows"
             variant="trending"
           />
