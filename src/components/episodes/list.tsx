@@ -1,49 +1,67 @@
-import { convexQuery } from "@convex-dev/react-query";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useConvexPaginatedQuery } from "@convex-dev/react-query";
 import type { LinkOptions } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import type { FunctionReference } from "convex/server";
 import { format } from "date-fns";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { List } from "@/components/list";
 import { ListPagination } from "@/components/list.pagination";
 import { Button } from "@/components/ui/button";
 import { ItemGroup } from "@/components/ui/item";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
+import type { PaginationArgs, PaginationReturns } from "@/schemas/convex";
 import type { Episodes } from "@/schemas/episodes";
 import { EpisodeItem } from "./item";
 
 // MAIN ------------------------------------------------------------------------------------------------------------------------------------
 export function EpisodesList({ emptyMessage, query, ...props }: EpisodesListProps) {
+  const itemsPerPage = 10;
+  const itemsPerFetch = 20;
   const [currentPage, setCurrentPage] = useState(1);
-  const [cursors, setCursors] = useState<(string | null)[]>([null]);
+  const [nextPage, setNextPage] = useState(-1);
 
-  const currentCursor = cursors[currentPage - 1] ?? null;
+  const today = useMemo(() => format(Date.now(), "yyyy-MM-dd'T'HH:00:00.000"), []);
 
-  const { data, isLoading, isFetching, isPlaceholderData } = useQuery({
-    ...convexQuery(query, {
-      paginationOpts: { numItems: 10, cursor: currentCursor },
-      today: format(Date.now(), "yyyy-MM-dd'T'HH:00:00.000"),
-    }),
-    placeholderData: keepPreviousData,
-  });
+  const { isLoading, loadMore, results: data, status } = useConvexPaginatedQuery(query, { today }, { initialNumItems: itemsPerFetch });
+
+  const hasEnoughFetchedItems = useMemo(() => data.length > currentPage * itemsPerPage, [data.length, currentPage]);
+  const hasNextPage = useMemo(() => status === "CanLoadMore" || hasEnoughFetchedItems, [hasEnoughFetchedItems, status]);
 
   useEffect(() => {
-    if (!data?.continueCursor || isPlaceholderData) return;
-    setCursors((prev) => {
-      if (prev[currentPage] === data.continueCursor) return prev;
-      const next = [...prev];
-      next[currentPage] = data.continueCursor;
-      return next;
-    });
-  }, [data?.continueCursor, isPlaceholderData, currentPage]);
+    if (hasEnoughFetchedItems && nextPage !== -1) {
+      setNextPage(-1);
+      setCurrentPage(nextPage);
+    }
+  }, [hasEnoughFetchedItems, nextPage]);
 
-  const hasNextPage = data ? !data.isDone : false;
+  const goToPage = (page: number) => {
+    if (page < 1 || (status === "Exhausted" && page * itemsPerPage - data.length >= itemsPerPage)) return;
+    if (data.length >= page * itemsPerPage) return setCurrentPage(page);
+    setNextPage(page);
+    loadMore(page * itemsPerPage - data.length);
+  };
 
   return (
     <List {...props}>
-      <Content emptyMessage={emptyMessage} episodes={data?.page ?? []} isLoading={isLoading} variant={props.variant} />
-      <ListPagination currentPage={currentPage} goToPage={setCurrentPage} hasNextPage={hasNextPage} isLoading={isFetching} />
+      <div className="relative py-2">
+        {isLoading && data.length > 0 && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/60 backdrop-blur-sm transition-opacity duration-300">
+            <Spinner className="size-8 text-primary" />
+          </div>
+        )}
+
+        <EpisodesListContent
+          currentPage={currentPage}
+          data={data}
+          emptyMessage={emptyMessage}
+          isLoading={isLoading}
+          itemsPerPage={itemsPerPage}
+          variant={props.variant}
+        />
+
+        <ListPagination className="mt-4" currentPage={currentPage} goToPage={goToPage} hasNextPage={hasNextPage} isLoading={isLoading} />
+      </div>
     </List>
   );
 }
@@ -51,23 +69,22 @@ export type EpisodesListProps = {
   emptyMessage: ReactNode;
   icon: string;
   link: LinkOptions;
-  query: FunctionReference<
-    "query",
-    "public",
-    { paginationOpts: { numItems: number; cursor: string | null }; today: string },
-    { page: readonly Episodes["Entity"][]; continueCursor: string | null; isDone: boolean }
-  >;
+  query: FunctionReference<"query", "public", PaginationArgs & { today: string }, PaginationReturns<Episodes["Entity"]>>;
   title: string;
   variant: "upcoming" | "unwatched";
 };
 
 // CONTENT ---------------------------------------------------------------------------------------------------------------------------------
-function Content({ episodes, isLoading, emptyMessage, variant }: ContentProps) {
-  if (isLoading)
+function EpisodesListContent({ currentPage, data, emptyMessage, isLoading, itemsPerPage, variant }: EpisodesListContentProps) {
+  if (isLoading && data.length === 0) {
     return (
       <div className="space-y-4">
         {Array.from({ length: 10 }, (_, i) => i).map((i) => (
-          <div className="flex items-center gap-4 rounded-lg border bg-card p-3 text-card-foreground shadow-sm" key={i}>
+          <div
+            className="fade-in-0 flex animate-in items-center gap-4 rounded-lg border bg-card p-3 text-card-foreground shadow-sm"
+            key={i}
+            style={{ animationDelay: `${i * 30}ms`, animationFillMode: "backwards" }}
+          >
             <Skeleton className="h-20 w-36 rounded-md" />
             <div className="flex-1">
               <div className="mb-2 flex items-center gap-2">
@@ -82,7 +99,9 @@ function Content({ episodes, isLoading, emptyMessage, variant }: ContentProps) {
         ))}
       </div>
     );
-  if (episodes.length === 0)
+  }
+
+  if (data.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-10 text-center">
         <p className="mb-4 text-muted-foreground">{emptyMessage}</p>
@@ -91,17 +110,29 @@ function Content({ episodes, isLoading, emptyMessage, variant }: ContentProps) {
         </Link>
       </div>
     );
+  }
+
   return (
-    <ItemGroup>
-      {episodes.map((episode) => (
-        <EpisodeItem episode={episode} key={episode._id} variant={variant} />
-      ))}
-    </ItemGroup>
+    <>
+      {isLoading && data.length > 0 && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/60 backdrop-blur-sm transition-opacity duration-300">
+          <Spinner className="size-8 text-primary" />
+        </div>
+      )}
+      <ItemGroup>
+        {data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((episode) => (
+          <EpisodeItem episode={episode} key={episode._id} variant={variant} />
+        ))}
+      </ItemGroup>
+    </>
   );
 }
-type ContentProps = {
-  episodes: readonly Episodes["Entity"][];
+
+type EpisodesListContentProps = {
+  currentPage: number;
+  data: readonly Episodes["Entity"][];
   emptyMessage: ReactNode;
   isLoading: boolean;
+  itemsPerPage: number;
   variant: "upcoming" | "unwatched";
 };

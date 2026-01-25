@@ -8,7 +8,7 @@ import {
   sFetchShowEpisodesArgs,
   sFetchShowEpisodesReturns,
 } from "@/functions/episodes";
-import { sId } from "@/schemas/convex";
+import { sId, sPaginationArgs, sPaginationReturns } from "@/schemas/convex";
 import { sEpisode, sEpisodeCreate, sEpisodeRef } from "@/schemas/episodes";
 import { sShowRef } from "@/schemas/shows";
 import { TvMaze } from "@/services/tvmaze";
@@ -46,33 +46,21 @@ export const readManyUnwatched = query({
     }),
 });
 
-export const readManyUnwatchedPaginated = query({
+export const readPaginatedUnwatched = query({
   args: S.Struct({
+    ...sPaginationArgs.fields,
     today: S.String,
-    paginationOpts: S.Struct({
-      numItems: S.NonNegativeInt,
-      cursor: S.Union(S.Null, S.String),
-    }),
   }),
-  returns: S.Struct({
-    page: S.Array(sEpisode),
-    continueCursor: S.Union(S.Null, S.String),
-    isDone: S.Boolean,
-  }),
+  returns: sPaginationReturns(sEpisode),
   handler: ({ paginationOpts, today }) =>
     E.gen(function* () {
       const { db } = yield* QueryCtx;
-      const results = yield* db
+      const pagination = yield* db
         .query("episodes")
         .withIndex("by_preference_and_unwatched", (q) => q.eq("preference", "favorite").eq("isWatched", false).lt("airstamp", today))
         .order("desc")
         .paginate(paginationOpts);
-      const page = yield* E.all(results.page.map(episodeFromDoc(db)));
-      return {
-        page,
-        continueCursor: results.continueCursor,
-        isDone: results.isDone,
-      };
+      return { ...pagination, page: yield* E.all(pagination.page.map(episodeFromDoc(db))) };
     }),
 });
 
@@ -94,32 +82,20 @@ export const readManyUpcoming = query({
     }),
 });
 
-export const readManyUpcomingPaginated = query({
+export const readPaginatedUpcoming = query({
   args: S.Struct({
+    ...sPaginationArgs.fields,
     today: S.String,
-    paginationOpts: S.Struct({
-      numItems: S.NonNegativeInt,
-      cursor: S.Union(S.Null, S.String),
-    }),
   }),
-  returns: S.Struct({
-    page: S.Array(sEpisode),
-    continueCursor: S.Union(S.Null, S.String),
-    isDone: S.Boolean,
-  }),
+  returns: sPaginationReturns(sEpisode),
   handler: ({ paginationOpts, today }) =>
     E.gen(function* () {
       const { db } = yield* QueryCtx;
-      const results = yield* db
+      const pagination = yield* db
         .query("episodes")
         .withIndex("by_preference_and_unwatched", (q) => q.eq("preference", "favorite").eq("isWatched", false).gt("airstamp", today))
         .paginate(paginationOpts);
-      const page = yield* E.all(results.page.map(episodeFromDoc(db)));
-      return {
-        page,
-        continueCursor: results.continueCursor,
-        isDone: results.isDone,
-      };
+      return { ...pagination, page: yield* E.all(pagination.page.map(episodeFromDoc(db))) };
     }),
 });
 

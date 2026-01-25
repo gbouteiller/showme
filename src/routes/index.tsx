@@ -20,7 +20,7 @@ function IndexPage() {
             emptyMessage="You don't have any unwatched episodes yet"
             icon="icon-[lucide--eye]"
             link={linkOptions({ to: "/episodes/non-vus" })}
-            query={api.episodes.readManyUnwatchedPaginated}
+            query={api.episodes.readPaginatedUnwatched}
             title="Unwatched Episodes"
             variant="unwatched"
           />
@@ -28,7 +28,7 @@ function IndexPage() {
             emptyMessage="No favorite shows currently airing with upcoming episodes"
             icon="icon-[lucide--calendar]"
             link={linkOptions({ to: "/episodes/a-venir" })}
-            query={api.episodes.readManyUpcomingPaginated}
+            query={api.episodes.readPaginatedUpcoming}
             title="Upcoming Episodes"
             variant="upcoming"
           />
