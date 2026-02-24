@@ -19,7 +19,7 @@ const YEARS = Array.from({ length: CURRENT_YEAR - 1960 + 1 }, (_, i) => 1960 + i
 // MAIN ------------------------------------------------------------------------------------------------------------------------------------
 export function ShowsWidget({ empty, handler, title, titleIcon, viewAll }: ShowsWidgetProps) {
   const [pageIndex, setPageIndex] = useState(0);
-  const [year, setYear] = useState(Number.POSITIVE_INFINITY);
+  const [year, setYear] = useState<number | undefined>(undefined);
 
   const result = useQuery({ ...convexQuery(handler, { pageIndex, pageSize: 20, year }), placeholderData: keepPreviousData });
 
@@ -103,16 +103,16 @@ export type WidgetItemsProps = {
 function YearSelect({ setPageIndex, setYear, year }: YearSelectProps) {
   const handleYearChange = (value: number | null) => {
     setPageIndex(0);
-    setYear(value ?? Number.POSITIVE_INFINITY);
+    setYear(value ?? undefined);
   };
 
   return (
     <Select onValueChange={handleYearChange} value={year}>
       <SelectTrigger size="sm">
-        <SelectValue placeholder="All years" render={() => <span>{year === Number.POSITIVE_INFINITY ? "All" : year}</span>} />
+        <SelectValue placeholder="All years" render={() => <span>{year === undefined ? "All" : year}</span>} />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value={Number.POSITIVE_INFINITY}>All years</SelectItem>
+        <SelectItem value={undefined}>All years</SelectItem>
         {YEARS.map((year) => (
           <SelectItem key={year} value={year}>
             {year}
@@ -122,7 +122,7 @@ function YearSelect({ setPageIndex, setYear, year }: YearSelectProps) {
     </Select>
   );
 }
-type YearSelectProps = { setPageIndex: (pageIndex: number) => void; setYear: (year: number) => void; year: number };
+type YearSelectProps = { setPageIndex: (pageIndex: number) => void; setYear: (year: number | undefined) => void; year: number | undefined };
 
 // TYPES -----------------------------------------------------------------------------------------------------------------------------------
-type ShowsWidgetArgs = ListArgs & { year: number };
+type ShowsWidgetArgs = ListArgs & { year: number | undefined };

@@ -136,16 +136,16 @@ export const readPaginatedFavorites = query(
   queryHandler({
     args: sPaginationWith({}),
     returns: sPaginated(sShow),
-    handler: readPaginatedShows({ aggregate: favoriteShows, opts: { namespace: true } }),
+    handler: (pageArgs) => readPaginatedShows({ aggregate: favoriteShows, opts: { namespace: true } })(pageArgs),
   })
 );
 
 export const readPaginatedTopRated = query(
   queryHandler({
-    args: sPaginationWith({ year: S.Union(S.NonNegativeInt, S.Literal(Number.POSITIVE_INFINITY)) }),
+    args: sPaginationWith({ year: S.optional(S.NonNegativeInt) }),
     returns: sPaginated(sShow),
     handler: ({ year, ...pageArgs }) =>
-      Number.isFinite(year)
+      year !== undefined
         ? readPaginatedShows({ aggregate: topRatedShowsByYear, opts: { namespace: year } })(pageArgs)
         : readPaginatedShows({ aggregate: topRatedShows, opts: { namespace: true } })(pageArgs),
   })
@@ -153,10 +153,10 @@ export const readPaginatedTopRated = query(
 
 export const readPaginatedTopRatedUnset = query(
   queryHandler({
-    args: sPaginationWith({ year: S.Union(S.NonNegativeInt, S.Literal(Number.POSITIVE_INFINITY)) }),
+    args: sPaginationWith({ year: S.optional(S.NonNegativeInt) }),
     returns: sPaginated(sShow),
     handler: ({ year, ...pageArgs }) =>
-      Number.isFinite(year)
+      year !== undefined
         ? readPaginatedShows({ aggregate: topRatedUnsetShowsByYear, opts: { namespace: year } })(pageArgs)
         : readPaginatedShows({ aggregate: topRatedUnsetShows, opts: { namespace: true } })(pageArgs),
   })
@@ -164,10 +164,10 @@ export const readPaginatedTopRatedUnset = query(
 
 export const readPaginatedTrending = query(
   queryHandler({
-    args: sPaginationWith({ year: S.Union(S.NonNegativeInt, S.Literal(Number.POSITIVE_INFINITY)) }),
+    args: sPaginationWith({ year: S.optional(S.NonNegativeInt) }),
     returns: sPaginated(sShow),
     handler: ({ year, ...pageArgs }) =>
-      Number.isFinite(year)
+      year !== undefined
         ? readPaginatedShows({ aggregate: trendingShowsByYear, opts: { namespace: year } })(pageArgs)
         : readPaginatedShows({ aggregate: trendingShows, opts: { namespace: true } })(pageArgs),
   })
@@ -175,10 +175,10 @@ export const readPaginatedTrending = query(
 
 export const readPaginatedTrendingUnset = query(
   queryHandler({
-    args: sPaginationWith({ year: S.Union(S.NonNegativeInt, S.Literal(Number.POSITIVE_INFINITY)) }),
+    args: sPaginationWith({ year: S.optional(S.NonNegativeInt) }),
     returns: sPaginated(sShow),
     handler: ({ year, ...pageArgs }) =>
-      Number.isFinite(year)
+      year !== undefined
         ? readPaginatedShows({ aggregate: trendingUnsetShowsByYear, opts: { namespace: year } })(pageArgs)
         : readPaginatedShows({ aggregate: trendingUnsetShows, opts: { namespace: true } })(pageArgs),
   })

@@ -1,6 +1,6 @@
 import { useConvexMutation } from "@convex-dev/react-query";
 import { useMutation } from "@tanstack/react-query";
-import { cva } from "class-variance-authority";
+import { cva, type VariantProps } from "class-variance-authority";
 import { Badge } from "@/components/adapted/badge";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
@@ -9,8 +9,8 @@ import { IconButton, type IconButtonProps } from "../adapted/icon-button";
 
 // STYLES ----------------------------------------------------------------------------------------------------------------------------------
 const SHOWS_PREFERENCE = {
-  base: cva("gap-2"),
-  icon: cva("size-5", {
+  base: cva("aspect-square h-auto p-0"),
+  icon: cva("size-4", {
     variants: {
       preference: {
         favorite: "icon-[line-md--heart-filled]",
@@ -29,7 +29,7 @@ const SHOWS_PREFERENCE = {
 // BADGE -----------------------------------------------------------------------------------------------------------------------------------
 export function ShowsPreferenceBadge({ className, show }: ShowsPreferenceBadgeProps) {
   return (
-    <Badge className={cn(SHOWS_PREFERENCE.base(), className)} variant="secondary">
+    <Badge className={cn(SHOWS_PREFERENCE.base(), className)} variant="default">
       <ShowsPreferenceIcon show={show} />
     </Badge>
   );
@@ -37,10 +37,10 @@ export function ShowsPreferenceBadge({ className, show }: ShowsPreferenceBadgePr
 type ShowsPreferenceBadgeProps = { className?: string; show: Shows["Entity"] };
 
 // ICON ------------------------------------------------------------------------------------------------------------------------------------
-export function ShowsPreferenceIcon({ className, show: { preference } }: ShowsPreferenceIconProps) {
-  return <span className={cn(SHOWS_PREFERENCE.icon({ preference, theme: "primary" }), className)} />;
+export function ShowsPreferenceIcon({ className, show: { preference }, theme }: ShowsPreferenceIconProps) {
+  return <span className={cn(SHOWS_PREFERENCE.icon({ preference, theme }), className)} />;
 }
-type ShowsPreferenceIconProps = { className?: string; show: Shows["Entity"] };
+type ShowsPreferenceIconProps = { className?: string; show: Shows["Entity"]; theme?: VariantProps<typeof SHOWS_PREFERENCE.icon>["theme"] };
 
 // SWITCH ----------------------------------------------------------------------------------------------------------------------------------
 export function ShowsPreferenceSwitch({ first, second, show }: ShowsPreferenceSwitchProps) {

@@ -5,7 +5,7 @@ import type { Shows } from "@/schemas/shows";
 
 // STYLES ----------------------------------------------------------------------------------------------------------------------------------
 const SHOWS_RATING = {
-  base: cva("px-1"),
+  base: cva("h-auto px-1"),
   icon: cva("icon-[line-md--star-filled] size-3"),
 };
 

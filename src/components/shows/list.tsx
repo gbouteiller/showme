@@ -38,7 +38,7 @@ export function ShowsList({ description, empty, handler, title, titleIcon }: Sho
           <CardDescription className={LIST.description()}>{description}</CardDescription>
         </CardHeader>
       )}
-      query={{ handler, args: { pageIndex, pageSize: 30, year: Number.POSITIVE_INFINITY }, setPageIndex }}
+      query={{ handler, args: { pageIndex, pageSize: 30 }, setPageIndex }}
     >
       {(show) => <ShowsItem key={show._id} show={show} />}
     </List>
@@ -54,4 +54,4 @@ export type ShowsListProps = Simplify<
 >;
 
 // TYPES -----------------------------------------------------------------------------------------------------------------------------------
-type ShowsListArgs = ListArgs & { year: number };
+type ShowsListArgs = ListArgs & { year?: number };

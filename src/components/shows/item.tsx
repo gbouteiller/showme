@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Shows } from "@/schemas/shows";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../adapted/card";
 import { ShowsLink } from "./link";
-import { ShowsPreferenceSwitch } from "./preference";
+import { ShowsPreferenceBadge, ShowsPreferenceSwitch } from "./preference";
 import { ShowsPremiered } from "./premiered";
 import { ShowsRating } from "./rating";
 
@@ -19,7 +19,7 @@ export const SHOWS_ITEM = {
   header: cva("absolute inset-x-2 bottom-2 z-30 bg-secondary/90 p-2"),
   image: cva("size-full object-cover transition-transform duration-700 group-hover/show:scale-110"),
   premiered: cva("absolute top-2 left-2 z-30 h-6 bg-secondary/90"),
-  rating: cva("absolute top-2 right-2 z-30 h-6 bg-primary/90"),
+  rating: cva("bg-primary/90"),
   title: cva("line-clamp-1 text-center font-light tracking-tight"),
   wrapper: cva("relative aspect-2/3 w-full overflow-hidden"),
 };
@@ -37,8 +37,12 @@ export function ShowsItem({ show }: ShowsItemProps) {
           </div>
         )}
 
-        <ShowsRating className={SHOWS_ITEM.rating()} show={show} />
         <ShowsPremiered className={SHOWS_ITEM.premiered()} show={show} />
+
+        <div className="absolute top-2 right-2 z-30 flex h-6 items-stretch gap-1">
+          <ShowsRating className={SHOWS_ITEM.rating()} show={show} />
+          <ShowsPreferenceBadge show={show} />
+        </div>
 
         <CardContent className={SHOWS_ITEM.content()}>
           <CardDescription className={SHOWS_ITEM.description()}>
