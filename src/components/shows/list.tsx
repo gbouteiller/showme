@@ -5,7 +5,7 @@ import { Badge } from "@/components/adapted/badge";
 import { CardDescription, CardHeader, CardTitle } from "@/components/adapted/card";
 import { List, type ListArgs, type ListProps, type ListQueryProps } from "@/components/list";
 import type { Shows } from "@/schemas/shows";
-import { ShowsItem } from "./item";
+import { ShowsItem, ShowsItemSkeleton } from "./item";
 
 // STYLES ----------------------------------------------------------------------------------------------------------------------------------
 export const LIST = {
@@ -27,7 +27,7 @@ export function ShowsList({ description, empty, handler, title, titleIcon }: Sho
         main: "@2xl:grid-cols-3 @4xl:grid-cols-4 @6xl:grid-cols-5 @lg:grid-cols-2",
       }}
       empty={empty}
-      fallback={<div />}
+      fallback={<ShowsItemSkeleton />}
       header={(data) => (
         <CardHeader>
           <CardTitle className={LIST.title()}>

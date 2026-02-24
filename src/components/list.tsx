@@ -86,7 +86,7 @@ function ListItems<I, A extends ListArgs = ListArgs>({ children, empty, fallback
 
   if (isLoading)
     return Array.from({ length: pageSize }, (_, i) => i).map((i) => (
-      <div className={LIST.fallback()} key={i} style={{ animationDelay: `${i * 30}ms` }}>
+      <div className={LIST.fallback()} key={i}>
         {fallback}
       </div>
     ));

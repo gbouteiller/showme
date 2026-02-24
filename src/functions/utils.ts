@@ -1,4 +1,4 @@
-import type { Bounds, TableAggregate, TableAggregateType } from "@convex-dev/aggregate";
+import type { Bounds, Item, TableAggregate, TableAggregateType } from "@convex-dev/aggregate";
 import type { Value as V } from "convex/values";
 import { Array as Arr, Effect as E, Option as O } from "effect";
 import type { Simplify } from "effect/Types";
@@ -23,7 +23,7 @@ export const at = E.fn(function* <TN extends TableNames, K extends V, N extends 
   return yield* E.tryPromise({
     try: () => aggregate.at(ctx, offset, opts),
     catch: (cause) => new AggregateAtError({ cause, offset }),
-  }).pipe(E.map(({ id, key }) => `[${Arr.isArray(key) ? `[""${key.map((k) => `, ${k}, ""`).join("")}]` : key},"${id}",""]`));
+  }).pipe(E.map(cursorFromItem));
 });
 
 export const count = E.fn(function* <TN extends TableNames, K extends V, N extends V | undefined>(props: CountProps<TN, K, N>) {
@@ -42,6 +42,12 @@ export const paginate = E.fn(function* <TN extends TableNames, K extends V, N ex
   });
   return { cursor, isDone, page: yield* E.all(page.map(({ id }) => db.get(table, id).pipe(E.map(O.getOrThrow)))) };
 });
+
+function cursorFromItem<TN extends TableNames, K extends V>({ id, key }: Item<K, Id<TN>>) {
+  if (typeof key === "string") return `["${key}","${id}",""]`;
+  if (Arr.isArray(key)) return `[[""${key.map((k) => `, ${typeof k === "string" ? `"${k}"` : k}, ""`).join("")}],"${id}",""]`;
+  return `[${key},"${id}",""]`;
+}
 
 // TYPES -----------------------------------------------------------------------------------------------------------------------------------
 export type TAT<TN extends TableNames, K extends V, N extends V | undefined> = TableAggregateType<K, DataModel, TN, N>;

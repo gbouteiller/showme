@@ -75,7 +75,7 @@ export function ShowsItemSkeleton() {
         <Skeleton className={SHOWS_ITEM.premiered()} />
       </div>
       <CardHeader className={SHOWS_ITEM.header()}>
-        <Skeleton className={SHOWS_ITEM.title()} />
+        <Skeleton className={SHOWS_ITEM.title({ className: "h-5" })} />
       </CardHeader>
     </Card>
   );
