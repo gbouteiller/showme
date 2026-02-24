@@ -1,30 +1,12 @@
 import { ParseResult, Schema as S } from "effect";
+import { makeTableHelpers } from "@/convex/effex/services/Helpers";
 import { sApiEpisodeDto } from "./api";
-import { sDocCommon, sDocRef, sId } from "./convex";
 import { sShow } from "./shows";
 
 // ENTRY -----------------------------------------------------------------------------------------------------------------------------------
-export const sEpisodeFields = S.Struct({
-  airdate: S.String,
-  airstamp: S.String,
-  airtime: S.String,
-  apiId: S.NonNegativeInt,
-  image: S.NullOr(S.String),
-  isWatched: S.Boolean,
-  name: S.String,
-  number: S.NullOr(S.NonNegativeInt),
-  preference: S.Literal("favorite", "ignored", "unset"),
-  rating: S.NullOr(S.NonNegative),
-  runtime: S.NullOr(S.NonNegativeInt),
-  season: S.NonNegativeInt,
-  showId: sId("shows"),
-  summary: S.NullOr(S.String),
-  thumbnail: S.NullOr(S.String),
-});
-export const sEpisodeDoc = S.Struct({ ...sDocCommon("episodes").fields, ...sEpisodeFields.fields });
+export const { sDoc: sEpisodeDoc, sFields: sEpisodeFields, sRef: sEpisodeRef } = makeTableHelpers("episodes");
 
 // REF -------------------------------------------------------------------------------------------------------------------------------------
-export const sEpisodeRef = sDocRef("episodes");
 export const sEpisodeApiRef = S.Struct({ apiId: S.Number });
 
 // ENTITY ----------------------------------------------------------------------------------------------------------------------------------

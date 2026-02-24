@@ -2,60 +2,33 @@ import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { Link, linkOptions } from "@tanstack/react-router";
 import { cva } from "class-variance-authority";
-import { api } from "convex/_generated/api";
 import { Activity, useEffect } from "react";
 import { toast } from "sonner";
+import { IconButton } from "@/components/adapted/icon-button";
 import { Progress } from "@/components/adapted/progress";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { api } from "@/convex/_generated/api";
 import { useTheme } from "@/lib/theme";
-import { cn } from "@/lib/utils";
-import { SearchBar } from "./-header.search-bar";
+import { HeaderSearchBar } from "./-header.search-bar";
 
 // DATA ------------------------------------------------------------------------------------------------------------------------------------
-const headerRoutes = [
-  linkOptions({
-    to: "/episodes/non-vus",
-    label: "Unwatched",
-    icon: "icon-[lucide--eye]",
-    activeProps: { className: "bg-muted text-unwatched" },
-  }),
-  linkOptions({
-    to: "/episodes/a-venir",
-    label: "Upcoming",
-    icon: "icon-[lucide--calendar]",
-    activeProps: { className: "bg-muted text-upcoming" },
-  }),
-  linkOptions({
-    to: "/series/a-decouvrir",
-    label: "Top Rated",
-    icon: "icon-[lucide--star]",
-    activeProps: { className: "bg-muted text-top-rated" },
-  }),
-  linkOptions({
-    to: "/series/tendances",
-    label: "Trending",
-    icon: "icon-[lucide--trending-up]",
-    activeProps: { className: "bg-muted text-trending" },
-  }),
-  linkOptions({
-    to: "/series/favorites",
-    label: "Favorites",
-    icon: "icon-[lucide--heart]",
-    activeProps: { className: "bg-muted text-favorites" },
-  }),
-  linkOptions({
-    to: "/parametres",
-    label: "Settings",
-    icon: "icon-[lucide--settings]",
-    activeProps: { className: "bg-muted text-settings" },
-  }),
+const navs = [
+  linkOptions({ to: "/episodes/unwatched", label: "Unwatched", icon: "icon-[lucide--eye]" }),
+  linkOptions({ to: "/episodes/upcoming", label: "Upcoming", icon: "icon-[lucide--calendar]" }),
+  linkOptions({ to: "/shows/top-rated", label: "Top Rated", icon: "icon-[lucide--star]" }),
+  linkOptions({ to: "/shows/trending", label: "Trending", icon: "icon-[lucide--trending-up]" }),
+  linkOptions({ to: "/shows/favorites", label: "Favorites", icon: "icon-[lucide--heart]" }),
 ];
 
 // STYLES ----------------------------------------------------------------------------------------------------------------------------------
 const HEADER = {
-  base: cva("sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"),
+  aside: cva("flex items-center gap-2"),
+  base: cva("glass sticky top-0 z-50 w-full px-2 py-4 sm:px-4"),
+  container: cva("container mx-auto flex justify-between"),
+  main: cva("flex items-center gap-2"),
+  nav: cva("hover:text-primary"),
+  navs: cva("flex items-center gap-1"),
   progress: cva("fixed inset-x-0 top-0 z-50"),
 };
 
@@ -63,58 +36,61 @@ const HEADER = {
 export default function Header() {
   return (
     <header className={HEADER.base()}>
-      <MissingShowsProgress />
-      <div className="w-full px-4 py-3 md:px-6">
-        <div className="mx-auto flex w-full max-w-[1920px] items-center justify-between">
-          <div className="flex items-center gap-6">
-            <Link className="flex items-center gap-2 pl-1 transition-colors hover:text-primary" to="/">
-              <span className="icon-[lucide--tv] size-5" />
-              <h1 className="font-bold text-lg tracking-tight">
-                Show<span className="text-primary">Me</span>
-              </h1>
-            </Link>
-            <Separator orientation="vertical" />
-            <nav className="flex items-center">
-              <TooltipProvider>
-                <div className="flex items-center gap-1.5">
-                  {headerRoutes.map(({ activeProps, icon, label, to }) => (
-                    <Tooltip key={to}>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            aria-label={label}
-                            nativeButton={false}
-                            render={<Link activeProps={activeProps} to={to} />}
-                            size="icon"
-                            variant="ghost"
-                          />
-                        }
-                      >
-                        <span className={cn("size-[18px]", "text-current", icon)} />
-                      </TooltipTrigger>
-                      <TooltipContent className="font-medium" side="bottom">
-                        {label}
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-                </div>
-              </TooltipProvider>
-            </nav>
-          </div>
-          <div className="absolute left-1/2 w-full max-w-md -translate-x-1/2 transform">
-            <SearchBar />
-          </div>
-          <div className="flex items-center gap-3 pr-1">
-            <ThemeSwitcher />
-          </div>
+      <HeaderProgress />
+      <div className={HEADER.container()}>
+        <div className={HEADER.main()}>
+          <HeaderLogo />
+          <Separator orientation="vertical" />
+          <HeaderNavs />
+        </div>
+        <div className={HEADER.aside()}>
+          <HeaderSearchBar />
+          <HeaderThemeSwitcher />
         </div>
       </div>
     </header>
   );
 }
 
+// LOGO ------------------------------------------------------------------------------------------------------------------------------------
+const LOGO = {
+  base: cva("flex gap-2 pl-1 transition-colors hover:text-primary"),
+  icon: cva("icon-[lucide--tv] size-7 text-primary drop-shadow-md"),
+  me: cva("text-primary"),
+  title: cva("hidden font-bold text-xl tracking-tight sm:flex"),
+};
+
+function HeaderLogo() {
+  return (
+    <Link className={LOGO.base()} to="/">
+      <span className={LOGO.icon()} />
+      <h1 className={LOGO.title()}>
+        Show<span className={LOGO.me()}>Me</span>
+      </h1>
+    </Link>
+  );
+}
+
+// MAIN ------------------------------------------------------------------------------------------------------------------------------------
+function HeaderNavs() {
+  return (
+    <nav className={HEADER.navs()}>
+      {navs.map(({ to, ...r }) => (
+        <IconButton
+          {...r}
+          className={HEADER.nav()}
+          key={to}
+          nativeButton={false}
+          render={<Link activeProps={{ className: "text-primary" }} to={to} />}
+          variant="ghost"
+        />
+      ))}
+    </nav>
+  );
+}
+
 // PROGRESS --------------------------------------------------------------------------------------------------------------------------------
-export function MissingShowsProgress() {
+function HeaderProgress() {
   const { data } = useQuery({
     ...convexQuery(api.fetcher.read),
     select: (fetcher) => ({ created: fetcher?.created ?? 0, isPending: fetcher?.isPending ?? true }),
@@ -137,7 +113,7 @@ const THEME_SWITCHER = {
   light: cva("icon-[lucide--moon] absolute size-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"),
 };
 
-export function ThemeSwitcher() {
+function HeaderThemeSwitcher() {
   const { appTheme, setTheme } = useTheme();
 
   function onClickToggle() {

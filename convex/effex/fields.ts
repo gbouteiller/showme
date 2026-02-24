@@ -1,0 +1,80 @@
+import { Id } from "@rjdellecese/confect/server";
+import { Schema as S } from "effect";
+import { sId } from "./schemas/genericId";
+
+// CONST -----------------------------------------------------------------------------------------------------------------------------------
+export const FIELDS = {
+  casts: {
+    characterId: Id.Id("characters"),
+    personId: Id.Id("persons"),
+    showId: Id.Id("shows"),
+  },
+  channels: {
+    apiId: S.NonNegativeInt,
+    countryId: S.OptionFromNullOr(Id.Id("countries")),
+    name: S.String,
+    officialSite: S.OptionFromNullOr(S.String),
+  },
+  characters: {
+    apiId: S.Int,
+    image: S.NullOr(S.String),
+    name: S.String,
+    thumbnail: S.NullOr(S.String),
+  },
+  countries: {
+    code: S.String,
+    name: S.String,
+    timezone: S.String,
+  },
+  episodes: {
+    airdate: S.String,
+    airstamp: S.String,
+    airtime: S.String,
+    apiId: S.NonNegativeInt,
+    image: S.NullOr(S.String),
+    isWatched: S.Boolean,
+    name: S.String,
+    number: S.NullOr(S.NonNegativeInt),
+    preference: S.Literal("favorite", "ignored", "unset"),
+    rating: S.NullOr(S.NonNegative),
+    runtime: S.NullOr(S.NonNegativeInt),
+    season: S.NonNegativeInt,
+    showId: sId("shows"),
+    summary: S.NullOr(S.String),
+    thumbnail: S.NullOr(S.String),
+  },
+  fetcher: {
+    created: S.NonNegativeInt,
+    isPending: S.Boolean,
+    lastPage: S.NonNegativeInt,
+    lastUpdated: S.NonNegativeInt,
+  },
+  persons: {
+    apiId: S.NonNegativeInt,
+    birthday: S.NullOr(S.String),
+    countryId: S.NullOr(Id.Id("countries")),
+    deathday: S.NullOr(S.String),
+    gender: S.NullOr(S.String),
+    image: S.NullOr(S.String),
+    name: S.String,
+    thumbnail: S.NullOr(S.String),
+    updated: S.NullOr(S.NonNegativeInt),
+  },
+  shows: {
+    apiId: S.NonNegativeInt,
+    channelId: S.OptionFromNullOr(Id.Id("channels")),
+    ended: S.OptionFromNullOr(S.String),
+    genres: S.Array(S.String),
+    image: S.OptionFromNullOr(S.String),
+    name: S.String,
+    officialSite: S.OptionFromNullOr(S.String),
+    premiered: S.OptionFromNullOr(S.String),
+    preference: S.Literal("favorite", "ignored", "unset"),
+    rating: S.NonNegative,
+    status: S.Literal("Ended", "In Development", "Running", "To Be Determined"),
+    summary: S.OptionFromNullOr(S.String),
+    thumbnail: S.OptionFromNullOr(S.String),
+    updated: S.NonNegativeInt,
+    weight: S.NonNegativeInt,
+  },
+} as const;

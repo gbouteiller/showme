@@ -1,36 +1,39 @@
-import { Effect as E, Schema as S } from "effect";
-import { readFetcher, updateFetcher } from "@/functions/fetcher";
+import { Schema as S } from "effect";
+import { readFetcher, startFetcher, updateFetcher } from "@/functions/fetcher";
 import { sFetcherDoc, sFetcherFields } from "@/schemas/fetcher";
-import { MutationCtx, mutation, QueryCtx, query } from "./confect";
+import { mutation, query } from "./_generated/server";
+import { mutationHandler, queryHandler } from "./effex";
 
 // QUERY -----------------------------------------------------------------------------------------------------------------------------------
-export const read = query({
-  args: S.Struct({}),
-  returns: S.OptionFromNullOr(sFetcherDoc),
-  handler: () =>
-    E.gen(function* () {
-      const { db } = yield* QueryCtx;
-      return yield* readFetcher(db)();
-    }),
-});
+export const read = query(
+  queryHandler({
+    args: S.Struct({}),
+    returns: S.OptionFromNullOr(sFetcherDoc),
+    handler: readFetcher,
+  })
+);
 
 // MUTATION --------------------------------------------------------------------------------------------------------------------------------
-export const stop = mutation({
-  args: S.Struct({}),
-  returns: S.Null,
-  handler: () =>
-    E.gen(function* () {
-      const { db } = yield* MutationCtx;
-      return yield* updateFetcher(db)(() => ({ isPending: false }));
-    }),
-});
+export const stop = mutation(
+  mutationHandler({
+    args: S.Struct({}),
+    returns: S.Null,
+    handler: () => updateFetcher(() => ({ isPending: false })),
+  })
+);
 
-export const update = mutation({
-  args: sFetcherFields.pick("created", "lastPage"),
-  returns: S.Null,
-  handler: ({ created, lastPage }) =>
-    E.gen(function* () {
-      const { db } = yield* MutationCtx;
-      return yield* updateFetcher(db)((fetcher) => ({ created: fetcher.created + created, lastPage }));
-    }),
-});
+export const start = mutation(
+  mutationHandler({
+    args: S.Struct({}),
+    returns: S.Number,
+    handler: () => startFetcher(),
+  })
+);
+
+export const update = mutation(
+  mutationHandler({
+    args: sFetcherFields.pick("created", "lastPage"),
+    returns: S.Null,
+    handler: ({ created, lastPage }) => updateFetcher((fetcher) => ({ created: fetcher.created + created, lastPage })),
+  })
+);

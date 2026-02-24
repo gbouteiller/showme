@@ -1,20 +1,12 @@
-import { Id } from "@rjdellecese/confect/server";
 import { ParseResult, Schema as S } from "effect";
+import { makeTableHelpers } from "@/convex/effex/services/Helpers";
 import { sApiChannelDto } from "./api";
-import { sDocCommon, sDocRef } from "./convex";
 import { sCountry, sCountryCreate } from "./countries";
 
 // ENTRY -----------------------------------------------------------------------------------------------------------------------------------
-export const sChannelFields = S.Struct({
-  apiId: S.NonNegativeInt,
-  countryId: S.OptionFromNullOr(Id.Id("countries")),
-  name: S.String,
-  officialSite: S.OptionFromNullOr(S.String),
-});
-export const sChannelDoc = S.Struct({ ...sDocCommon("channels").fields, ...sChannelFields.fields });
+export const { sDoc: sChannelDoc, sFields: sChannelFields, sRef: sChannelRef } = makeTableHelpers("channels");
 
 // REF -------------------------------------------------------------------------------------------------------------------------------------
-export const sChannelRef = sDocRef("channels");
 export const sChannelApiRef = S.Struct({ apiId: S.Number });
 
 // ENTITY ----------------------------------------------------------------------------------------------------------------------------------

@@ -1,17 +1,11 @@
 import { Schema as S } from "effect";
+import { makeTableHelpers } from "@/convex/effex/services/Helpers";
 import { sApiCountryDto } from "./api";
-import { sDocCommon, sDocRef } from "./convex";
 
 // ENTRY -----------------------------------------------------------------------------------------------------------------------------------
-export const sCountryFields = S.Struct({
-  code: S.String,
-  name: S.String,
-  timezone: S.String,
-});
-export const sCountryDoc = S.Struct({ ...sDocCommon("countries").fields, ...sCountryFields.fields });
+export const { sDoc: sCountryDoc, sFields: sCountryFields, sRef: sCountryRef } = makeTableHelpers("countries");
 
 // REF -------------------------------------------------------------------------------------------------------------------------------------
-export const sCountryRef = sDocRef("countries");
 export const sCountryApiRef = S.Struct({ code: S.String });
 
 // ENTITY ----------------------------------------------------------------------------------------------------------------------------------

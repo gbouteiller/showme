@@ -1,86 +1,78 @@
-import { useConvexMutation } from "@convex-dev/react-query";
-import { useMutation } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { cva, type VariantProps } from "class-variance-authority";
-import { getYear } from "date-fns";
-import type { MouseEvent } from "react";
-import { Badge } from "@/components/adapted/badge";
-import { IconButton } from "@/components/adapted/icon-button";
-import { Item, ItemActions, ItemContent, ItemTitle } from "@/components/ui/item";
-import { api } from "@/convex/_generated/api";
-import { cn } from "@/lib/utils";
+import { Image } from "@unpic/react";
+import { cva } from "class-variance-authority";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Shows } from "@/schemas/shows";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../adapted/card";
+import { ShowsLink } from "./link";
+import { ShowsPreferenceSwitch } from "./preference";
+import { ShowsPremiered } from "./premiered";
+import { ShowsRating } from "./rating";
 
-// MAIN ------------------------------------------------------------------------------------------------------------------------------------
-const ITEM = {
-  actions: cva("relative gap-1"),
-  base: cva(`relative h-16 overflow-hidden bg-cover bg-center px-2 py-0
-  before:absolute before:inset-0 before:bg-linear-to-r before:from-black/80 before:to-black/30 before:content-['']
-  hover:before:from-black/60 hover:before:to-black/10`),
-  content: cva("relative"),
-  star: cva("icon-[line-md--star-filled] size-2.5"),
+// STYLES ----------------------------------------------------------------------------------------------------------------------------------
+export const SHOWS_ITEM = {
+  actions: cva("flex items-center justify-center gap-2"),
+  base: cva("group/show relative overflow-hidden border p-0 ring-0 transition-all duration-300 hover:-translate-y-1 hover:border-primary"),
+  content:
+    cva(`absolute inset-0 z-20 bg-background/60 py-10 px-6 flex flex-col gap-4 items-center justify-center opacity-0 backdrop-blur-md transition-opacity duration-300 
+        group-hover/show:opacity-100`),
+  description: cva("line-clamp-5 text-center text-foreground"),
+  header: cva("absolute inset-x-2 bottom-2 z-30 bg-secondary/90 p-2"),
+  image: cva("size-full object-cover transition-transform duration-700 group-hover/show:scale-110"),
+  premiered: cva("absolute top-2 left-2 z-30 h-6 bg-secondary/90"),
+  rating: cva("absolute top-2 right-2 z-30 h-6 bg-primary/90"),
+  title: cva("line-clamp-1 text-center font-light tracking-tight"),
+  wrapper: cva("relative aspect-2/3 w-full overflow-hidden"),
 };
 
-export function ShowItem({ className, onSetPreference, show, variant }: ShowItemProps) {
-  const { mutate: setPreference, isPending } = useMutation({
-    mutationFn: useConvexMutation(api.shows.setPreference),
-  });
-
-  const handleSetPreference = (preference: "favorite" | "ignored" | "unset") => (event: MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    onSetPreference?.();
-    setPreference({ _id: show._id, preference });
-  };
-
+// MAIN ------------------------------------------------------------------------------------------------------------------------------------
+export function ShowsItem({ show }: ShowsItemProps) {
   return (
-    <Item
-      className={cn(ITEM.base(), className)}
-      render={<Link params={{ showId: show._id }} to="/series/$showId" />}
-      role="listitem"
-      style={{ backgroundImage: `url(${show.image})` }}
-      variant="outline"
-    >
-      <ItemContent className={ITEM.content()}>
-        <ItemTitle>
-          <aside className="flex flex-col gap-2">
-            <Badge className="w-full" variant={variant}>
-              <span className={ITEM.star()} />
-              {show.rating?.toFixed(1)}
-            </Badge>
-            {show.premiered && (
-              <Badge className="w-full" variant="secondary">
-                {getYear(show.premiered)}
-              </Badge>
-            )}
-          </aside>
-          {show.name}
-        </ItemTitle>
-      </ItemContent>
-      <ItemActions className={ITEM.actions()}>
-        <IconButton
-          icon={show.preference !== "ignored" ? "icon-[mdi--heart-broken]" : "icon-[mdi--heart-outline]"}
-          label={show.preference !== "ignored" ? "Ignore show" : "Stop ignoring show"}
-          loading={isPending}
-          onClick={handleSetPreference(show.preference !== "ignored" ? "ignored" : "unset")}
-          size="icon-sm"
-          variant="secondary"
-        />
-        <IconButton
-          icon={show.preference !== "favorite" ? "icon-[mdi--heart]" : "icon-[mdi--heart-outline]"}
-          label={show.preference !== "favorite" ? "Add to favorites" : "Remove from favorites"}
-          loading={isPending}
-          onClick={handleSetPreference(show.preference !== "favorite" ? "favorite" : "unset")}
-          size="icon-sm"
-          variant={variant}
-        />
-      </ItemActions>
-    </Item>
+    <Card className={SHOWS_ITEM.base()} key={show._id}>
+      <div className={SHOWS_ITEM.wrapper()}>
+        {show.image ? (
+          <Image alt={show.name} className={SHOWS_ITEM.image()} layout="fullWidth" src={show.image} />
+        ) : (
+          <div className="flex size-full items-center justify-center bg-muted">
+            <span className="icon-[lucide--tv] size-12 text-muted-foreground/50" />
+          </div>
+        )}
+
+        <ShowsRating className={SHOWS_ITEM.rating()} show={show} />
+        <ShowsPremiered className={SHOWS_ITEM.premiered()} show={show} />
+
+        <CardContent className={SHOWS_ITEM.content()}>
+          <CardDescription className={SHOWS_ITEM.description()}>
+            {show.summary?.replace(/<[^>]*>/g, "") || "No description available"}
+          </CardDescription>
+          <div className={SHOWS_ITEM.actions()}>
+            <ShowsPreferenceSwitch show={show} />
+            <ShowsLink show={show} />
+          </div>
+        </CardContent>
+      </div>
+      <CardHeader className={SHOWS_ITEM.header()}>
+        <CardTitle className={SHOWS_ITEM.title()}>{show.name}</CardTitle>
+      </CardHeader>
+    </Card>
   );
 }
-type ShowItemProps = {
+type ShowsItemProps = {
   className?: string;
   onSetPreference?: () => void;
   show: Shows["Entity"];
-  variant: VariantProps<typeof Badge>["variant"];
 };
+
+// SKELETON --------------------------------------------------------------------------------------------------------------------------------
+export function ShowsItemSkeleton() {
+  return (
+    <Card className={SHOWS_ITEM.base()}>
+      <div className={SHOWS_ITEM.wrapper()}>
+        <Skeleton className={SHOWS_ITEM.rating()} />
+        <Skeleton className={SHOWS_ITEM.premiered()} />
+      </div>
+      <CardHeader className={SHOWS_ITEM.header()}>
+        <Skeleton className={SHOWS_ITEM.title()} />
+      </CardHeader>
+    </Card>
+  );
+}

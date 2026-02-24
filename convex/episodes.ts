@@ -1,172 +1,152 @@
-import { formatISO } from "date-fns";
+import { TableAggregate } from "@convex-dev/aggregate";
+import type { HttpClientError } from "@effect/platform/HttpClientError";
+import { formatISO, parseISO } from "date-fns";
 import { Effect as E, Option as O, Schema as S } from "effect";
-import {
-  episodeFromDoc,
-  fetchShowEpisodes,
-  readEpisodeByApiId,
-  readEpisodesByShow,
-  sFetchShowEpisodesArgs,
-  sFetchShowEpisodesReturns,
-} from "@/functions/episodes";
-import { sId, sPaginationArgs, sPaginationReturns } from "@/schemas/convex";
-import { sEpisode, sEpisodeCreate, sEpisodeRef } from "@/schemas/episodes";
-import { sShowRef } from "@/schemas/shows";
+import type { ParseError } from "effect/ParseResult";
+import { episodeFromDoc, readEpisodeByApiId, readEpisodesByShow, readPaginatedEpisodes } from "@/functions/episodes";
+import { type Episodes, sEpisode, sEpisodeCreate, sEpisodeRef } from "@/schemas/episodes";
+import { sShowDoc, sShowRef } from "@/schemas/shows";
 import { TvMaze } from "@/services/tvmaze";
-import type { Id } from "./_generated/dataModel";
-import { action, MutationCtx, mutation, QueryCtx, query } from "./confect";
+import { api, components } from "./_generated/api";
+import type { DataModel, Id } from "./_generated/dataModel";
+import { action, query } from "./_generated/server";
+import { actionHandler, mutationHandler, queryHandler } from "./effex";
+import { sId } from "./effex/schemas/genericId";
+import { ActionCtx, type ActionCtxDeps } from "./effex/services/ActionCtx";
+import { DatabaseWriter } from "./effex/services/DatabaseWriter";
+import { MutationCtx } from "./effex/services/MutationCtx";
+import { sPaginated, sPaginationWith } from "./effex/utils";
+import { mutation, triggers } from "./triggers";
 
-// QUERY -----------------------------------------------------------------------------------------------------------------------------------
-export const readByShow = query({
-  args: sShowRef,
-  returns: S.Array(sEpisode),
-  handler: ({ _id }) =>
-    E.gen(function* () {
-      const { db } = yield* QueryCtx;
-      const docs = yield* readEpisodesByShow(db)({ _id });
-      return yield* E.all(docs.map(episodeFromDoc(db)));
-    }),
+// AGGREGATES ------------------------------------------------------------------------------------------------------------------------------
+export const unwatchedEpisodes = new TableAggregate<AggregateEpisodesParams>(components.unwatchedEpisodes, {
+  namespace: ({ isWatched, preference }) => [preference, isWatched],
+  sortKey: ({ airstamp }) => -parseISO(airstamp).getTime(),
 });
+triggers.register("episodes", unwatchedEpisodes.trigger());
 
-export const readManyUnwatched = query({
-  args: S.Struct({ limit: S.optional(S.NonNegativeInt) }),
-  returns: S.Array(sEpisode),
-  handler: ({ limit = 10 }) =>
-    E.gen(function* () {
-      const { db } = yield* QueryCtx;
-
-      const docs = yield* db
-        .query("episodes")
-        .withIndex("by_preference_and_unwatched", (q) =>
-          q.eq("preference", "favorite").eq("isWatched", false).lt("airstamp", formatISO(Date.now()))
-        )
-        .order("desc")
-        .take(limit);
-
-      return yield* E.all(docs.map(episodeFromDoc(db)));
-    }),
+export const upcomingEpisodes = new TableAggregate<AggregateEpisodesParams>(components.upcomingEpisodes, {
+  namespace: ({ isWatched, preference }) => [preference, isWatched],
+  sortKey: ({ airstamp }) => parseISO(airstamp).getTime(),
 });
+triggers.register("episodes", upcomingEpisodes.trigger());
 
-export const readPaginatedUnwatched = query({
-  args: S.Struct({
-    ...sPaginationArgs.fields,
-    today: S.String,
-  }),
-  returns: sPaginationReturns(sEpisode),
-  handler: ({ paginationOpts, today }) =>
-    E.gen(function* () {
-      const { db } = yield* QueryCtx;
-      const pagination = yield* db
-        .query("episodes")
-        .withIndex("by_preference_and_unwatched", (q) => q.eq("preference", "favorite").eq("isWatched", false).lt("airstamp", today))
-        .order("desc")
-        .paginate(paginationOpts);
-      return { ...pagination, page: yield* E.all(pagination.page.map(episodeFromDoc(db))) };
+// QUERIES ---------------------------------------------------------------------------------------------------------------------------------
+export const readByShow = query(
+  queryHandler({
+    args: sShowRef,
+    returns: S.Array(sEpisode),
+    handler: E.fn(function* ({ _id }) {
+      const docs = yield* readEpisodesByShow({ _id });
+      return yield* E.all(docs.map(episodeFromDoc));
     }),
-});
+  })
+);
 
-export const readManyUpcoming = query({
-  args: S.Struct({ limit: S.optional(S.NonNegativeInt) }),
-  returns: S.Array(sEpisode),
-  handler: ({ limit = 10 }) =>
-    E.gen(function* () {
-      const { db } = yield* QueryCtx;
+export const readPaginatedUnwatched = query(
+  queryHandler({
+    args: sPaginationWith({ timestamp: S.NonNegativeInt }),
+    returns: sPaginated(sEpisode),
+    handler: ({ timestamp, ...pageArgs }) =>
+      readPaginatedEpisodes({
+        aggregate: unwatchedEpisodes,
+        opts: { namespace: ["favorite", false], bounds: { lower: { inclusive: true, key: -timestamp } } },
+      })(pageArgs),
+  })
+);
 
-      const docs = yield* db
-        .query("episodes")
-        .withIndex("by_preference_and_unwatched", (q) =>
-          q.eq("preference", "favorite").eq("isWatched", false).gt("airstamp", formatISO(Date.now()))
-        )
-        .take(limit);
-
-      return yield* E.all(docs.map(episodeFromDoc(db)));
-    }),
-});
-
-export const readPaginatedUpcoming = query({
-  args: S.Struct({
-    ...sPaginationArgs.fields,
-    today: S.String,
-  }),
-  returns: sPaginationReturns(sEpisode),
-  handler: ({ paginationOpts, today }) =>
-    E.gen(function* () {
-      const { db } = yield* QueryCtx;
-      const pagination = yield* db
-        .query("episodes")
-        .withIndex("by_preference_and_unwatched", (q) => q.eq("preference", "favorite").eq("isWatched", false).gt("airstamp", today))
-        .paginate(paginationOpts);
-      return { ...pagination, page: yield* E.all(pagination.page.map(episodeFromDoc(db))) };
-    }),
-});
+export const readPaginatedUpcoming = query(
+  queryHandler({
+    args: sPaginationWith({ timestamp: S.NonNegativeInt }),
+    returns: sPaginated(sEpisode),
+    handler: ({ timestamp, ...pageArgs }) =>
+      readPaginatedEpisodes({
+        aggregate: upcomingEpisodes,
+        opts: { namespace: ["favorite", false], bounds: { lower: { inclusive: false, key: timestamp } } },
+      })(pageArgs),
+  })
+);
 
 // MUTATION --------------------------------------------------------------------------------------------------------------------------------
-export const createManyMissingForShow = mutation({
-  args: S.Struct({ showId: sId("shows"), dtos: S.Array(sEpisodeCreate) }),
-  returns: S.Array(sId("episodes")),
-  handler: ({ dtos, showId }) =>
-    E.gen(function* () {
+export const createManyMissingForShow = mutation(
+  mutationHandler({
+    args: S.Struct({ showId: sId("shows"), dtos: S.Array(sEpisodeCreate) }),
+    returns: S.Array(sId("episodes")),
+    handler: E.fn(function* ({ dtos, showId }) {
       const { db } = yield* MutationCtx;
-      const { preference } = (yield* db.get(showId)).pipe(O.getOrThrow);
+      const { preference } = (yield* db.get("shows", showId)).pipe(O.getOrThrow);
       const ids: Id<"episodes">[] = [];
       for (const dto of dtos)
-        if ((yield* readEpisodeByApiId(db)({ apiId: dto.apiId })).pipe(O.isNone))
+        if ((yield* readEpisodeByApiId({ apiId: dto.apiId })).pipe(O.isNone))
           ids.push(yield* db.insert("episodes", { ...dto, preference, showId }));
       return ids;
     }),
-});
+  })
+);
 
-export const toggleWatched = mutation({
-  args: sEpisodeRef,
-  returns: S.Null,
-  handler: ({ _id }) =>
-    E.gen(function* () {
-      const { db } = yield* MutationCtx;
-      const { isWatched } = (yield* db.get(_id)).pipe(O.getOrThrow);
-      yield* db.patch(_id, { isWatched: !isWatched });
+export const setWatched = mutation(
+  mutationHandler({
+    args: S.Struct({ isWatched: S.Boolean, ...sEpisodeRef.fields }),
+    returns: S.Null,
+    handler: E.fn(function* ({ _id, isWatched }) {
+      const db = yield* DatabaseWriter;
+      yield* db.patch("episodes", _id, { isWatched });
       return null;
     }),
-});
+  })
+);
 
-export const setSeasonWatched = mutation({
-  args: S.Struct({
-    showId: sId("shows"),
-    season: S.Int,
-    isWatched: S.Boolean,
-  }),
-  returns: S.Null,
-  handler: ({ isWatched, season, showId }) =>
-    E.gen(function* () {
-      const { db } = yield* MutationCtx;
+export const setSeasonWatched = mutation(
+  mutationHandler({
+    args: S.Struct({ isWatched: S.Boolean, season: S.Int, showId: sId("shows") }),
+    returns: S.Null,
+    handler: E.fn(function* ({ isWatched, season, showId }) {
+      const db = yield* DatabaseWriter;
       const episodes = yield* db
         .query("episodes")
         .withIndex("by_show_and_season", (q) => q.eq("showId", showId).eq("season", season).lt("airstamp", formatISO(Date.now())))
         .collect();
-      for (const episode of episodes) yield* db.patch(episode._id, { isWatched });
+      for (const episode of episodes) yield* db.patch("episodes", episode._id, { isWatched });
       return null;
     }),
-});
+  })
+);
 
-export const setShowWatched = mutation({
-  args: S.Struct({
-    showId: sId("shows"),
-    isWatched: S.Boolean,
-  }),
-  returns: S.Null,
-  handler: ({ isWatched, showId }) =>
-    E.gen(function* () {
-      const { db } = yield* MutationCtx;
+export const setShowWatched = mutation(
+  mutationHandler({
+    args: S.Struct({ isWatched: S.Boolean, showId: sId("shows") }),
+    returns: S.Null,
+    handler: E.fn(function* ({ isWatched, showId }) {
+      const db = yield* DatabaseWriter;
       const episodes = yield* db
         .query("episodes")
         .withIndex("by_show", (q) => q.eq("showId", showId).lt("airstamp", formatISO(Date.now())))
         .collect();
-      for (const episode of episodes) yield* db.patch(episode._id, { isWatched });
+      for (const episode of episodes) yield* db.patch("episodes", episode._id, { isWatched });
       return null;
     }),
-});
+  })
+);
 
 // ACTIONS ---------------------------------------------------------------------------------------------------------------------------------
-export const fetchForShow = action({
-  args: sFetchShowEpisodesArgs,
-  returns: sFetchShowEpisodesReturns,
-  handler: (show) => fetchShowEpisodes(show).pipe(E.provide(TvMaze.Default)),
-});
+export const fetchForShow = action(
+  actionHandler({
+    args: sShowDoc.pick("_id", "apiId"),
+    returns: S.Array(sId("episodes")),
+    handler: ({ _id, apiId }): E.Effect<readonly Id<"episodes">[], HttpClientError | ParseError, ActionCtxDeps> =>
+      E.gen(function* () {
+        const { runMutation } = yield* ActionCtx;
+        const { fetchShowEpisodes } = yield* TvMaze;
+        const dtos = yield* fetchShowEpisodes(apiId);
+        return yield* runMutation(api.episodes.createManyMissingForShow, { dtos, showId: _id });
+      }).pipe(E.provide(TvMaze.Default)),
+  })
+);
+
+// TYPES -----------------------------------------------------------------------------------------------------------------------------------
+type AggregateEpisodesParams = {
+  DataModel: DataModel;
+  Key: number;
+  Namespace?: [Episodes["Entity"]["preference"], Episodes["Entity"]["isWatched"]];
+  TableName: "episodes";
+};

@@ -2,16 +2,15 @@ import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/adapted/command";
-import { ShowItem } from "@/components/shows/item";
+import { ShowsWidgetItem } from "@/components/shows/widget-item";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
 import { api } from "@/convex/_generated/api";
 import { useDebounce } from "@/hooks/use-debounce";
-import { cn } from "@/lib/utils";
 
-export function SearchBar() {
+export function HeaderSearchBar() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
@@ -43,22 +42,9 @@ export function SearchBar() {
 
   return (
     <Dialog onOpenChange={setOpen} open={open}>
-      <DialogTrigger
-        render={
-          <Button
-            className={cn(
-              "relative h-8 w-full justify-start pl-3 font-normal text-foreground shadow-none hover:bg-muted/50 sm:pr-12 md:w-48 lg:w-56 xl:w-64 dark:bg-card"
-            )}
-            onClick={() => setOpen(true)}
-            variant="outline"
-          />
-        }
-      >
-        <span className="hidden lg:inline-flex">Search a show...</span>
-        <span className="inline-flex lg:hidden">Search...</span>
-        <div className="absolute top-1.5 right-1.5 hidden gap-1 group-has-data-[slot=designer]/body:hidden sm:flex">
-          <Kbd>⌘K</Kbd>
-        </div>
+      <DialogTrigger render={<Button onClick={() => setOpen(true)} variant="outline" />}>
+        <span className="icon-[lucide--search]" />
+        <Kbd>⌘K</Kbd>
       </DialogTrigger>
       <DialogContent showCloseButton={false}>
         <DialogHeader className="sr-only">
@@ -81,7 +67,7 @@ export function SearchBar() {
             <CommandGroup>
               {data.map((item) => (
                 <CommandItem key={item._id} onSelect={() => setOpen(false)}>
-                  <ShowItem className="w-full" show={item} variant="favorites" />
+                  <ShowsWidgetItem className="w-full" show={item} />
                 </CommandItem>
               ))}
             </CommandGroup>

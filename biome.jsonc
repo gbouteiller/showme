@@ -1,35 +1,23 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-  "vcs": {
-    "enabled": false,
-    "clientKind": "git",
-    "useIgnoreFile": false
-  },
-  "files": {
-    "ignoreUnknown": false,
-    "includes": [
-      "**/src/**/*",
-      "**/.vscode/**/*",
-      "**/index.html",
-      "**/vite.config.js",
-      "!**/src/routeTree.gen.ts",
-      "!**/src/styles.css"
-    ]
-  },
-  "formatter": {
-    "lineWidth": 140
-  },
-  "assist": {
-    "actions": {
-      "source": {
-        "organizeImports": "on"
-      }
-    }
-  },
+  "extends": [
+    "ultracite/biome/core",
+    "ultracite/biome/react",
+    "ultracite/biome/remix"
+  ],
+  "formatter": { "lineWidth": 140 },
   "linter": {
     "enabled": true,
     "rules": {
       "recommended": true,
+      "complexity": {
+        "noForEach": {
+          "level": "error",
+          "options": {
+            "allowedIdentifiers": ["Effect", "E"]
+          }
+        }
+      },
       "style": {
         "useBlockStatements": "off",
         "useConsistentTypeDefinitions": {
@@ -47,6 +35,5 @@
       "formatter": { "enabled": false },
       "assist": { "enabled": false }
     }
-  ],
-  "extends": ["ultracite/core", "ultracite/react", "ultracite/remix"]
+  ]
 }

@@ -1,5 +1,4 @@
-import type { VariantProps } from "class-variance-authority";
-import { type BUTTON, Button } from "@/components/adapted/button";
+import { Button } from "@/components/adapted/button";
 import {
   Dialog,
   DialogClose,
@@ -13,7 +12,7 @@ import {
 import { IconButton, type IconButtonProps } from "./icon-button";
 
 // MAIN ------------------------------------------------------------------------------------------------------------------------------------
-export function IconConfirm({ confirmVariant, description, onClick, title, ...rest }: IconConfirmProps) {
+export function IconConfirm({ description, onClick, title, ...rest }: IconConfirmProps) {
   return (
     <Dialog>
       <DialogTrigger render={<IconButton {...rest} />} />
@@ -24,14 +23,13 @@ export function IconConfirm({ confirmVariant, description, onClick, title, ...re
         </DialogHeader>
         <DialogFooter>
           <DialogClose render={<Button variant="outline" />}>Annuler</DialogClose>
-          <DialogClose render={<Button onClick={onClick} variant={confirmVariant} />}>Confirmer</DialogClose>
+          <DialogClose render={<Button onClick={onClick} />}>Confirmer</DialogClose>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 export type IconConfirmProps = IconButtonProps & {
-  confirmVariant: VariantProps<typeof BUTTON>["variant"];
   description: string;
   onClick: () => void;
   title: string;

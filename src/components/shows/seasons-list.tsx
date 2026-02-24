@@ -39,8 +39,8 @@ type Season = {
 
 export function SeasonsList({ apiId, showId }: SeasonsListProps) {
   const { data: episodes, isLoading } = useQuery(convexQuery(api.episodes.readByShow, { _id: showId }));
-  const { mutate: toggleWatched } = useMutation({
-    mutationFn: useConvexMutation(api.episodes.toggleWatched),
+  const { mutate: setWatched } = useMutation({
+    mutationFn: useConvexMutation(api.episodes.setWatched),
   });
   const { isPending: isFetching, mutate: fetchEpisodes } = useMutation<any, Error, { _id: Id<"shows">; apiId: number }>({
     mutationFn: useConvexAction(api.episodes.fetchForShow),
@@ -53,8 +53,8 @@ export function SeasonsList({ apiId, showId }: SeasonsListProps) {
   }, [showId, apiId, episodes, isLoading, fetchEpisodes, isFetching]);
 
   const handleToggleEpisode = (episodeId: Id<"episodes">) => {
-    toggleWatched(
-      { _id: episodeId },
+    setWatched(
+      { _id: episodeId, isWatched: !episodes?.find((ep) => ep._id === episodeId)?.isWatched },
       {
         onSuccess: () => {
           toast.success("Episode status updated");

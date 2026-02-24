@@ -1,77 +1,57 @@
-import { useConvexPaginatedQuery } from "@convex-dev/react-query";
-import type { LinkOptions } from "@tanstack/react-router";
-import type { FunctionReference } from "convex/server";
-import { useEffect, useMemo, useState } from "react";
-import { List } from "@/components/list";
-import { Skeleton } from "@/components/ui/skeleton";
-import type { PaginationArgs, PaginationReturns } from "@/schemas/convex";
+import { cva } from "class-variance-authority";
+import type { Simplify } from "effect/Types";
+import { useState } from "react";
+import { Badge } from "@/components/adapted/badge";
+import { CardDescription, CardHeader, CardTitle } from "@/components/adapted/card";
+import { List, type ListArgs, type ListProps, type ListQueryProps } from "@/components/list";
 import type { Shows } from "@/schemas/shows";
-import { ListPagination } from "../list.pagination";
-import { Spinner } from "../ui/spinner";
-import { ShowItem } from "./item";
+import { ShowsItem } from "./item";
+
+// STYLES ----------------------------------------------------------------------------------------------------------------------------------
+export const LIST = {
+  description: cva("text-sm sm:text-base"),
+  header: cva("flex items-center justify-between"),
+  title: cva("flex items-center gap-2 font-bold text-2xl tracking-tight sm:text-3xl"),
+  titleIcon: cva("text-primary"),
+  total: cva("hidden sm:block"),
+};
 
 // MAIN ------------------------------------------------------------------------------------------------------------------------------------
-export function ShowsList({ query, ...props }: ShowsListProps) {
-  const itemsPerPage = 10;
-  const itemsPerFetch = 20;
-  const [currentPage, setCurrentPage] = useState(1);
-  const [nextPage, setNextPage] = useState(-1);
-
-  const { isLoading, loadMore, results: data, status } = useConvexPaginatedQuery(query, {}, { initialNumItems: itemsPerFetch });
-
-  const hasEnoughFetchedItems = useMemo(() => data.length > currentPage * itemsPerPage, [data.length, currentPage]);
-  const hasNextPage = useMemo(() => status === "CanLoadMore" || hasEnoughFetchedItems, [hasEnoughFetchedItems, status]);
-
-  useEffect(() => {
-    if (hasEnoughFetchedItems && nextPage !== -1) {
-      setNextPage(-1);
-      setCurrentPage(nextPage);
-    }
-  }, [hasEnoughFetchedItems, nextPage]);
-
-  const handleSetPreference = () => {
-    if (data.length - 1 < currentPage * itemsPerPage && status === "CanLoadMore") loadMore(itemsPerFetch);
-  };
-
-  const goToPage = (page: number) => {
-    if (page < 1 || (status === "Exhausted" && page * itemsPerPage - data.length >= itemsPerPage)) return;
-    if (data.length >= page * itemsPerPage) return setCurrentPage(page);
-    setNextPage(page);
-    loadMore(page * itemsPerPage - data.length);
-  };
+export function ShowsList({ description, empty, handler, title, titleIcon }: ShowsListProps) {
+  const [pageIndex, setPageIndex] = useState(0);
 
   return (
-    <List {...props}>
-      <div className="relative py-2">
-        {isLoading && data.length > 0 && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/60 backdrop-blur-sm transition-opacity duration-300">
-            <Spinner className="size-8 text-primary" />
-          </div>
-        )}
-        <div className="space-y-2.5">
-          {isLoading && data.length === 0
-            ? Array.from({ length: 10 }, (_, i) => i).map((index) => (
-                <div
-                  className="fade-in-0 animate-in overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm"
-                  key={index}
-                  style={{ animationDelay: `${index * 30}ms`, animationFillMode: "backwards" }}
-                >
-                  <Skeleton className="h-16 w-full" />
-                </div>
-              ))
-            : data
-                .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-                .map((show) => <ShowItem key={show._id} onSetPreference={handleSetPreference} show={show} variant={props.variant} />)}
-        </div>
-        <ListPagination className="mt-4" currentPage={currentPage} goToPage={goToPage} hasNextPage={hasNextPage} isLoading={isLoading} />
-      </div>
+    <List
+      className={{
+        base: "bg-transparent p-0 ring-0",
+        main: "@2xl:grid-cols-3 @4xl:grid-cols-4 @6xl:grid-cols-5 @lg:grid-cols-2",
+      }}
+      empty={empty}
+      fallback={<div />}
+      header={(data) => (
+        <CardHeader>
+          <CardTitle className={LIST.title()}>
+            <span className={LIST.titleIcon({ className: titleIcon })} />
+            {title}
+            <Badge className={LIST.total()}>{data?.total}</Badge>
+          </CardTitle>
+          <CardDescription className={LIST.description()}>{description}</CardDescription>
+        </CardHeader>
+      )}
+      query={{ handler, args: { pageIndex, pageSize: 30, year: Number.POSITIVE_INFINITY }, setPageIndex }}
+    >
+      {(show) => <ShowsItem key={show._id} show={show} />}
     </List>
   );
 }
-export type ShowsListProps = {
-  icon: string;
-  link: LinkOptions;
-  query: FunctionReference<"query", "public", PaginationArgs, PaginationReturns<Shows["Entity"], Shows["Entry"]>>;
-  title: string;
-  variant: "topRated" | "trending";
-};
+export type ShowsListProps = Simplify<
+  Pick<ListProps<Shows["Entity"], ShowsListArgs>, "empty"> &
+    Pick<ListQueryProps<Shows["Entity"], ShowsListArgs>, "handler"> & {
+      description: string;
+      title: string;
+      titleIcon: string;
+    }
+>;
+
+// TYPES -----------------------------------------------------------------------------------------------------------------------------------
+type ShowsListArgs = ListArgs & { year: number };

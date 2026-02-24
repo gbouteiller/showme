@@ -1,14 +1,7 @@
-import { Schema as S } from "effect";
-import { sDocCommon } from "./convex";
+import { makeTableHelpers } from "@/convex/effex/services/Helpers";
 
 // ENTRY -----------------------------------------------------------------------------------------------------------------------------------
-export const sFetcherFields = S.Struct({
-  created: S.NonNegativeInt,
-  isPending: S.Boolean,
-  lastPage: S.NonNegativeInt,
-  lastUpdated: S.NonNegativeInt,
-});
-export const sFetcherDoc = S.Struct({ ...sDocCommon("fetcher").fields, ...sFetcherFields.fields });
+export const { sDoc: sFetcherDoc, sFields: sFetcherFields, sRef: sFetcherRef } = makeTableHelpers("fetcher");
 
 // ENTITY ----------------------------------------------------------------------------------------------------------------------------------
 export const sFetcher = sFetcherDoc;

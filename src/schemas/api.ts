@@ -155,7 +155,7 @@ export const sApiShowDto = S.Struct({
   rating: sApiRatingDto,
   runtime: S.NullOr(S.NonNegativeInt),
   schedule: sApiScheduleDto,
-  status: S.String,
+  status: S.Literal("Ended", "In Development", "Running", "To Be Determined"),
   summary: S.NullOr(S.String),
   type: S.String,
   updated: S.NonNegativeInt,

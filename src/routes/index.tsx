@@ -1,6 +1,7 @@
 import { createFileRoute, linkOptions } from "@tanstack/react-router";
-import { EpisodesList } from "@/components/episodes/list";
-import { ShowsList } from "@/components/shows/list";
+import { Separator } from "@/components/adapted/separator";
+import { EpisodesWidget } from "@/components/episodes/widget";
+import { ShowsWidget } from "@/components/shows/widget";
 import { api } from "@/convex/_generated/api";
 
 // ROUTE -----------------------------------------------------------------------------------------------------------------------------------
@@ -8,48 +9,41 @@ export const Route = createFileRoute("/")({
   component: IndexPage,
 });
 
-// STYLES ----------------------------------------------------------------------------------------------------------------------------------
-
 // PAGE ------------------------------------------------------------------------------------------------------------------------------------
 function IndexPage() {
   return (
-    <div className="flex flex-col gap-8">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <EpisodesList
-            emptyMessage="You don't have any unwatched episodes yet"
-            icon="icon-[lucide--eye]"
-            link={linkOptions({ to: "/episodes/non-vus" })}
-            query={api.episodes.readPaginatedUnwatched}
-            title="Unwatched Episodes"
-            variant="unwatched"
-          />
-          <EpisodesList
-            emptyMessage="No favorite shows currently airing with upcoming episodes"
-            icon="icon-[lucide--calendar]"
-            link={linkOptions({ to: "/episodes/a-venir" })}
-            query={api.episodes.readPaginatedUpcoming}
-            title="Upcoming Episodes"
-            variant="upcoming"
-          />
-        </div>
-        <div className="space-y-6">
-          <ShowsList
-            icon="icon-[lucide--star]"
-            link={linkOptions({ to: "/series/a-decouvrir" })}
-            query={api.shows.readPaginatedTopRatedUnset}
-            title="Top Rated Shows"
-            variant="topRated"
-          />
-          <ShowsList
-            icon="icon-[lucide--trending-up]"
-            link={linkOptions({ to: "/series/tendances" })}
-            query={api.shows.readPaginatedTrendingUnset}
-            title="Trending Shows"
-            variant="trending"
-          />
-        </div>
+    <div className="space-y-6 px-4">
+      <div className="flex flex-col gap-6 sm:flex-row">
+        <EpisodesWidget
+          empty="You don't have any upcoming episodes yet."
+          handler={api.episodes.readPaginatedUpcoming}
+          title="Upcoming Episodes"
+          titleIcon="icon-[lucide--calendar]"
+          viewAll={linkOptions({ to: "/episodes/upcoming" })}
+        />
+        <Separator orientation="vertical" />
+        <EpisodesWidget
+          empty="You don't have any unwatched episodes yet."
+          handler={api.episodes.readPaginatedUnwatched}
+          title="Unwatched Episodes"
+          titleIcon="icon-[lucide--eye]"
+          viewAll={linkOptions({ to: "/episodes/unwatched" })}
+        />
       </div>
+      <ShowsWidget
+        empty="You don't have any trending shows yet."
+        handler={api.shows.readPaginatedTrendingUnset}
+        title="Trending Shows"
+        titleIcon="icon-[lucide--trending-up]"
+        viewAll={linkOptions({ to: "/shows/trending" })}
+      />
+      <ShowsWidget
+        empty="You don't have any top rated shows yet."
+        handler={api.shows.readPaginatedTopRatedUnset}
+        title="Top Rated Shows"
+        titleIcon="icon-[lucide--star]"
+        viewAll={linkOptions({ to: "/shows/top-rated" })}
+      />
     </div>
   );
 }

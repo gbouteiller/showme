@@ -1,0 +1,116 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      POSTGRES_USER: convex
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-convex_password_change_me}
+      POSTGRES_DB: convex_self_hosted
+      # Memory optimization for ~1-2GB total usage
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+      PGDATA: /var/lib/postgresql/data/pgdata
+    command: >
+      postgres
+      -c shared_buffers=512MB
+      -c effective_cache_size=1GB
+      -c work_mem=16MB
+      -c maintenance_work_mem=128MB
+      -c max_connections=20
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB
+      -c checkpoint_completion_target=0.9
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U convex -d convex_self_hosted"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # Memory limits (8GB limit for safety, targeting ~1-2GB actual usage)
+    deploy:
+      resources:
+        limits:
+          memory: 8g
+        reservations:
+          memory: 512m
+
+  backend:
+    image: ghcr.io/get-convex/convex-backend:latest
+    stop_grace_period: 10s
+    stop_signal: SIGINT
+    ports:
+      - "${PORT:-3210}:3210"
+      - "${SITE_PROXY_PORT:-3211}:3211"
+    volumes:
+      # Keep for files/modules storage, but database is now in PostgreSQL
+      - data:/convex/data
+    environment:
+      - ACTIONS_USER_TIMEOUT_SECS
+      - AWS_ACCESS_KEY_ID
+      - AWS_REGION
+      - AWS_S3_DISABLE_CHECKSUMS
+      - AWS_S3_DISABLE_SSE
+      - AWS_S3_FORCE_PATH_STYLE
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_SESSION_TOKEN
+      - CONVEX_CLOUD_ORIGIN=${CONVEX_CLOUD_ORIGIN:-http://127.0.0.1:${PORT:-3210}}
+      - CONVEX_RELEASE_VERSION_DEV
+      - CONVEX_SITE_ORIGIN=${CONVEX_SITE_ORIGIN:-http://127.0.0.1:${SITE_PROXY_PORT:-3211}}
+      - DATABASE_URL
+      - DISABLE_BEACON
+      - DOCUMENT_RETENTION_DELAY=${DOCUMENT_RETENTION_DELAY:-172800}
+      - DO_NOT_REQUIRE_SSL=true
+      - HTTP_SERVER_TIMEOUT_SECONDS
+      - INSTANCE_NAME=${INSTANCE_NAME:-effex}
+      - INSTANCE_SECRET=${INSTANCE_SECRET}
+      - MYSQL_URL
+      # This is the key change - use PostgreSQL instead of SQLite
+      - POSTGRES_URL=postgresql://convex:${POSTGRES_PASSWORD:-convex_password_change_me}@postgres:5432/convex_self_hosted
+      - REDACT_LOGS_TO_CLIENT
+      - RUST_BACKTRACE
+      - RUST_LOG=${RUST_LOG:-info}
+      - S3_ENDPOINT_URL
+      - S3_STORAGE_EXPORTS_BUCKET
+      - S3_STORAGE_FILES_BUCKET
+      - S3_STORAGE_MODULES_BUCKET
+      - S3_STORAGE_SEARCH_BUCKET
+      - S3_STORAGE_SNAPSHOT_IMPORTS_BUCKET
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: curl -f http://localhost:3210/version
+      interval: 5s
+      start_period: 10s
+    # Memory limits (8GB limit for safety, targeting ~2-3GB actual usage)
+    deploy:
+      resources:
+        limits:
+          memory: 8g
+        reservations:
+          memory: 1g
+
+  dashboard:
+    image: ghcr.io/get-convex/convex-dashboard:latest
+    stop_grace_period: 10s
+    stop_signal: SIGINT
+    ports:
+      - "${DASHBOARD_PORT:-6791}:6791"
+    environment:
+      - NEXT_PUBLIC_DEPLOYMENT_URL=${NEXT_PUBLIC_DEPLOYMENT_URL:-http://127.0.0.1:${PORT:-3210}}
+      - NEXT_PUBLIC_LOAD_MONACO_INTERNALLY
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  data:
+  postgres_data:

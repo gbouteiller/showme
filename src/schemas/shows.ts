@@ -1,31 +1,12 @@
-import { Id } from "@rjdellecese/confect/server";
 import { ParseResult, Schema as S } from "effect";
+import { makeTableHelpers } from "@/convex/effex/services/Helpers";
 import { sApiShowDto } from "./api";
 import { sChannel, sChannelCreate, sChannelDto } from "./channels";
-import { sDocCommon, sDocRef } from "./convex";
 
 // ENTRY -----------------------------------------------------------------------------------------------------------------------------------
-export const sShowFields = S.Struct({
-  apiId: S.NonNegativeInt,
-  channelId: S.OptionFromNullOr(Id.Id("channels")),
-  ended: S.OptionFromNullOr(S.String),
-  genres: S.Array(S.String),
-  image: S.OptionFromNullOr(S.String),
-  name: S.String,
-  officialSite: S.OptionFromNullOr(S.String),
-  premiered: S.OptionFromNullOr(S.String),
-  preference: S.Literal("favorite", "ignored", "unset"),
-  rating: S.OptionFromNullOr(S.NonNegative),
-  status: S.String,
-  summary: S.OptionFromNullOr(S.String),
-  thumbnail: S.OptionFromNullOr(S.String),
-  updated: S.NonNegativeInt,
-  weight: S.NonNegativeInt,
-});
-export const sShowDoc = S.Struct({ ...sDocCommon("shows").fields, ...sShowFields.fields });
+export const { sDoc: sShowDoc, sFields: sShowFields, sRef: sShowRef } = makeTableHelpers("shows");
 
 // REF -------------------------------------------------------------------------------------------------------------------------------------
-export const sShowRef = sDocRef("shows");
 export const sShowApiRef = S.Struct({ apiId: S.Number });
 
 // ENTITY ----------------------------------------------------------------------------------------------------------------------------------
@@ -39,7 +20,7 @@ export const sShowDto = S.transformOrFail(
     ...sShowFields.pick("apiId", "preference").fields,
     channel: S.NullOr(sChannelDto),
     image: S.NullOr(S.String),
-    rating: S.NullOr(S.NonNegative),
+    rating: S.NonNegative,
     thumbnail: S.NullOr(S.String),
   }),
   {
@@ -51,7 +32,7 @@ export const sShowDto = S.transformOrFail(
         channel: webChannel ?? network,
         image: image?.original ?? null,
         preference: "unset" as const,
-        rating: rating.average ?? null,
+        rating: rating.average ?? 0,
         thumbnail: image?.medium ?? null,
       }),
     encode: (create, _, ast) => ParseResult.fail(new ParseResult.Forbidden(ast, create, "Forbidden.")),
@@ -73,5 +54,6 @@ export type Shows = {
   Entity: typeof sShow.Encoded;
   Entry: typeof sShow.Type;
   Fields: typeof sShowFields.Type;
+  Preference: typeof sShowFields.Type.preference;
   Ref: typeof sShowRef.Type;
 };

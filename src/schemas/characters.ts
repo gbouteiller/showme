@@ -1,15 +1,8 @@
-import { Schema as S } from "effect";
+import { makeTableHelpers } from "@/convex/effex/services/Helpers";
 import { sApiCharacterDto } from "./api";
-import { sDocCommon } from "./convex";
 
 // ENTRY -----------------------------------------------------------------------------------------------------------------------------------
-export const sCharacterFields = S.Struct({
-  apiId: S.Int,
-  image: S.NullOr(S.String),
-  name: S.String,
-  thumbnail: S.NullOr(S.String),
-});
-export const sCharacterDoc = S.Struct({ ...sDocCommon("characters").fields, ...sCharacterFields.fields });
+export const { sDoc: sCharacterDoc, sFields: sCharacterFields, sRef: sCharacterRef } = makeTableHelpers("characters");
 
 // ENTITY ----------------------------------------------------------------------------------------------------------------------------------
 export const sCharacter = sCharacterDoc;
