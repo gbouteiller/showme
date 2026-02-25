@@ -36,7 +36,7 @@ export function EpisodesList({ description, empty, handler, title, titleIcon }: 
           <CardDescription className={LIST.description()}>{description}</CardDescription>
         </CardHeader>
       )}
-      query={{ handler, args: { pageIndex, pageSize: 30, timestamp: startOfHour(new Date()).getTime() }, setPageIndex }}
+      query={{ handler, args: { pageIndex, pageSize: 36, timestamp: startOfHour(new Date()).getTime() }, setPageIndex }}
     >
       {(episode) => <EpisodeItem episode={episode} key={episode._id} />}
     </List>

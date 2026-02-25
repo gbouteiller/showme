@@ -17,8 +17,18 @@ export const LIST = {
 };
 
 // MAIN ------------------------------------------------------------------------------------------------------------------------------------
-export function ShowsList({ description, empty, handler, title, titleIcon }: ShowsListProps) {
-  const [pageIndex, setPageIndex] = useState(0);
+export function ShowsList({
+  description,
+  empty,
+  handler,
+  title,
+  titleIcon,
+  pageIndex: propPageIndex,
+  setPageIndex: propSetPageIndex,
+}: ShowsListProps) {
+  const [localPageIndex, setLocalPageIndex] = useState(0);
+  const pageIndex = propPageIndex ?? localPageIndex;
+  const setPageIndex = propSetPageIndex ?? setLocalPageIndex;
 
   return (
     <List
@@ -50,6 +60,8 @@ export type ShowsListProps = Simplify<
       description: string;
       title: string;
       titleIcon: string;
+      pageIndex?: number;
+      setPageIndex?: (pageIndex: number) => void;
     }
 >;
 
