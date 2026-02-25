@@ -18,8 +18,8 @@ export const SHOWS_ITEM = {
   description: cva("line-clamp-5 text-center text-foreground"),
   header: cva("absolute inset-x-2 bottom-2 z-30 bg-secondary/90 p-2"),
   image: cva("size-full object-cover transition-transform duration-700 group-hover/show:scale-110"),
-  premiered: cva("absolute top-2 left-2 z-30 h-6 bg-secondary/90"),
-  rating: cva("bg-primary/90"),
+  infos: cva("absolute inset-x-2 top-2 z-30 flex items-stretch justify-between"),
+  infosRight: cva("flex items-stretch gap-1"),
   title: cva("line-clamp-1 text-center font-light tracking-tight"),
   wrapper: cva("relative aspect-2/3 w-full overflow-hidden"),
 };
@@ -36,14 +36,13 @@ export function ShowsItem({ show }: ShowsItemProps) {
             <span className="icon-[lucide--tv] size-12 text-muted-foreground/50" />
           </div>
         )}
-
-        <ShowsPremiered className={SHOWS_ITEM.premiered()} show={show} />
-
-        <div className="absolute top-2 right-2 z-30 flex h-6 items-stretch gap-1">
-          <ShowsRating className={SHOWS_ITEM.rating()} show={show} />
-          <ShowsPreferenceBadge show={show} />
-        </div>
-
+        <aside className={SHOWS_ITEM.infos()}>
+          <ShowsPremiered show={show} />
+          <div className={SHOWS_ITEM.infosRight()}>
+            <ShowsRating show={show} />
+            <ShowsPreferenceBadge show={show} />
+          </div>
+        </aside>
         <CardContent className={SHOWS_ITEM.content()}>
           <CardDescription className={SHOWS_ITEM.description()}>
             {show.summary?.replace(/<[^>]*>/g, "") || "No description available"}
@@ -69,10 +68,13 @@ type ShowsItemProps = {
 // SKELETON --------------------------------------------------------------------------------------------------------------------------------
 export function ShowsItemSkeleton() {
   return (
-    <Card className={SHOWS_ITEM.base()}>
-      <div className={SHOWS_ITEM.wrapper()}>
-        <Skeleton className={SHOWS_ITEM.rating()} />
-        <Skeleton className={SHOWS_ITEM.premiered()} />
+    <Card className={SHOWS_ITEM.wrapper()}>
+      <div className={SHOWS_ITEM.infos()}>
+        <Skeleton className="h-5.5 w-11.5" />
+        <div className={SHOWS_ITEM.infosRight()}>
+          <Skeleton className="h-5.5 w-12" />
+          <Skeleton className="size-5.5" />
+        </div>
       </div>
       <CardHeader className={SHOWS_ITEM.header()}>
         <Skeleton className={SHOWS_ITEM.title({ className: "h-5" })} />
