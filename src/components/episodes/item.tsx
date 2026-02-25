@@ -116,14 +116,15 @@ type EpisodeItemImageProps = { episode: Episodes["Entity"] };
 // SKELETON --------------------------------------------------------------------------------------------------------------------------------
 export function EpisodeItemSkeleton() {
   return (
-    <div className="relative flex h-24 overflow-hidden border bg-card p-0 transition-all duration-300">
-      <div>
-        <Skeleton className="mb-2 h-4 w-3/4" />
-        <Skeleton className="h-3 w-1/2" />
-      </div>
-      <div className={EPISODE_ITEM.actions()}>
-        <Skeleton className="size-full" />
-      </div>
-    </div>
+    <Item className={EPISODE_ITEM.base({ className: "bg-transparent" })} variant="outline">
+      <ItemContent className={EPISODE_ITEM.content()}>
+        <Skeleton className="h-5 w-13.5" />
+        <Skeleton className="h-4 w-13.5" />
+        <Skeleton className="h-4 w-13.5" />
+      </ItemContent>
+      <Skeleton className={EPISODE_ITEM.aside({ className: "bg-card" })}>
+        <Skeleton className={EPISODE_ITEM.airDate({ className: "h-5 w-20" })} />
+      </Skeleton>
+    </Item>
   );
 }
