@@ -16,6 +16,7 @@ import type { DataModel } from "./_generated/dataModel";
 import { action, query } from "./_generated/server";
 import { actionHandler, mutationHandler, queryHandler } from "./effex";
 import type { DocNotFoundInTable } from "./effex/errors";
+import { FIELDS } from "./effex/fields";
 import { ActionCtx, type ActionCtxDeps } from "./effex/services/ActionCtx";
 import { DatabaseReader } from "./effex/services/DatabaseReader";
 import { MutationCtx, type MutationCtxDeps } from "./effex/services/MutationCtx";
@@ -148,12 +149,14 @@ export const readPaginatedFavorites = query(
 
 export const readPaginatedTopRated = query(
   queryHandler({
-    args: sPaginationWith({ year: S.optional(S.NonNegativeInt) }),
+    args: sPaginationWith({ preference: S.optional(FIELDS.shows.preference), year: S.optional(S.NonNegativeInt) }),
     returns: sPaginated(sShow),
-    handler: ({ year, ...pageArgs }) =>
-      year !== undefined
-        ? readPaginatedShows({ aggregate: topRatedShowsByYear, opts: { namespace: year } })(pageArgs)
-        : readPaginatedShows({ aggregate: topRatedShows, opts: { namespace: true } })(pageArgs),
+    handler: ({ preference, year, ...pageArgs }) => {
+      if (!(preference || year)) return readPaginatedShows({ aggregate: topRatedShows, opts: { namespace: true } })(pageArgs);
+      if (preference) return readPaginatedShows({ aggregate: topRatedShowsByPreference, opts: { namespace: preference } })(pageArgs);
+      if (year) return readPaginatedShows({ aggregate: topRatedShowsByYear, opts: { namespace: year } })(pageArgs);
+      return readPaginatedShows({ aggregate: topRatedShowsByPreferenceAndYear, opts: { namespace: `${preference}-${year}` } })(pageArgs);
+    },
   })
 );
 
