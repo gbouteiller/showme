@@ -653,7 +653,7 @@ export declare const components: {
       >;
     };
   };
-  topRatedUnsetShows: {
+  topRatedShowsByPreference: {
     btree: {
       aggregateBetween: FunctionReference<
         "query",
@@ -839,7 +839,7 @@ export declare const components: {
       >;
     };
   };
-  topRatedUnsetShowsByYear: {
+  topRatedShowsByPreferenceAndYear: {
     btree: {
       aggregateBetween: FunctionReference<
         "query",

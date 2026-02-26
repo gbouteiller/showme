@@ -46,7 +46,7 @@ export type ShowsWidgetProps = Pick<ListProps<Shows["Entity"], ShowsWidgetArgs>,
 
 // ITEMS -----------------------------------------------------------------------------------------------------------------------------------
 function WidgetItems({ empty, query: { result } }: WidgetItemsProps) {
-  const [api, setApi] = useState<CarouselApi>(); // TODO: use api to reset carousel when year is changed
+  const [, setApi] = useState<CarouselApi>(); // TODO: use api to reset carousel when year is changed
   const { data, error, isError, isLoading } = result;
 
   if (isLoading)
@@ -95,7 +95,7 @@ function WidgetItems({ empty, query: { result } }: WidgetItemsProps) {
   );
 }
 export type WidgetItemsProps = {
-  empty: string;
+  empty: React.ReactNode;
   query: { result: UseQueryResult<ListData<Shows["Entity"]>> };
 };
 
@@ -125,4 +125,4 @@ function YearSelect({ setPageIndex, setYear, year }: YearSelectProps) {
 type YearSelectProps = { setPageIndex: (pageIndex: number) => void; setYear: (year: number | undefined) => void; year: number | undefined };
 
 // TYPES -----------------------------------------------------------------------------------------------------------------------------------
-type ShowsWidgetArgs = ListArgs & { year: number | undefined };
+type ShowsWidgetArgs = ListArgs & { year?: number };

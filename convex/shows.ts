@@ -48,21 +48,27 @@ export const topRatedShowsByYear = new TableAggregate<AggregateShowsParams<numbe
 });
 triggers.register("shows", topRatedShowsByYear.trigger());
 
-export const topRatedUnsetShows = new TableAggregate<AggregateShowsParams<boolean, number>>(components.topRatedUnsetShows, {
-  namespace: ({ preference, premiered, rating }) => {
-    if (rating > 0 && !!premiered && preference === "unset") return true;
-  },
-  sortKey: ({ rating }) => -rating,
-});
-triggers.register("shows", topRatedUnsetShows.trigger());
+export const topRatedShowsByPreference = new TableAggregate<AggregateShowsParams<string, [number, string]>>(
+  components.topRatedShowsByPreference,
+  {
+    namespace: ({ preference, premiered, rating }) => {
+      if (rating > 0 && !!premiered && preference) return preference;
+    },
+    sortKey: ({ rating, name }) => [-rating, name],
+  }
+);
+triggers.register("shows", topRatedShowsByPreference.trigger());
 
-export const topRatedUnsetShowsByYear = new TableAggregate<AggregateShowsParams<number, number>>(components.topRatedUnsetShowsByYear, {
-  namespace: ({ preference, premiered, rating }) => {
-    if (rating > 0 && !!premiered && preference === "unset") return getYear(premiered);
-  },
-  sortKey: ({ rating }) => -rating,
-});
-triggers.register("shows", topRatedUnsetShowsByYear.trigger());
+export const topRatedShowsByPreferenceAndYear = new TableAggregate<AggregateShowsParams<string, [number, string]>>(
+  components.topRatedShowsByPreferenceAndYear,
+  {
+    namespace: ({ preference, premiered, rating }) => {
+      if (rating > 0 && !!premiered && preference) return `${preference}-${getYear(premiered)}`;
+    },
+    sortKey: ({ rating, name }) => [-rating, name],
+  }
+);
+triggers.register("shows", topRatedShowsByPreferenceAndYear.trigger());
 
 export const trendingShows = new TableAggregate<AggregateShowsParams<boolean, [number, number]>>(components.trendingShows, {
   namespace: ({ premiered, rating }) => {
@@ -106,15 +112,15 @@ export const run = migrations.runner();
 export const backfillAggregatesMigration = migrations.define({
   table: "shows",
   migrateOne: async (ctx, doc) => {
-    await favoriteShows.insertIfDoesNotExist(ctx, doc);
+    // await favoriteShows.insertIfDoesNotExist(ctx, doc);
     // await trendingShows.insertIfDoesNotExist(ctx, doc);
     // await trendingShowsByYear.insertIfDoesNotExist(ctx, doc);
     // await trendingUnsetShows.insertIfDoesNotExist(ctx, doc);
     // await trendingUnsetShowsByYear.insertIfDoesNotExist(ctx, doc);
     // await topRatedShows.insertIfDoesNotExist(ctx, doc);
     // await topRatedShowsByYear.insertIfDoesNotExist(ctx, doc);
-    // await topRatedUnsetShows.insertIfDoesNotExist(ctx, doc);
-    // await topRatedUnsetShowsByYear.insertIfDoesNotExist(ctx, doc);
+    await topRatedShowsByPreference.insertIfDoesNotExist(ctx, doc);
+    await topRatedShowsByPreferenceAndYear.insertIfDoesNotExist(ctx, doc);
   },
 });
 
@@ -157,8 +163,8 @@ export const readPaginatedTopRatedUnset = query(
     returns: sPaginated(sShow),
     handler: ({ year, ...pageArgs }) =>
       year !== undefined
-        ? readPaginatedShows({ aggregate: topRatedUnsetShowsByYear, opts: { namespace: year } })(pageArgs)
-        : readPaginatedShows({ aggregate: topRatedUnsetShows, opts: { namespace: true } })(pageArgs),
+        ? readPaginatedShows({ aggregate: topRatedShowsByPreferenceAndYear, opts: { namespace: `unset-${year}` } })(pageArgs)
+        : readPaginatedShows({ aggregate: topRatedShowsByPreference, opts: { namespace: "unset" } })(pageArgs),
   })
 );
 

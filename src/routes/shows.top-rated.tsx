@@ -4,7 +4,7 @@ import { ShowsList } from "@/components/shows/list";
 import { api } from "@/convex/_generated/api";
 
 const searchSchema = z.object({
-  pageIndex: z.number().catch(0),
+  pageIndex: z.number().default(0).catch(0),
 });
 
 // ROUTE -----------------------------------------------------------------------------------------------------------------------------------
