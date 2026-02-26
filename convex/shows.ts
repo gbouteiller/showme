@@ -87,24 +87,27 @@ export const trendingShowsByYear = new TableAggregate<AggregateShowsParams<numbe
 });
 triggers.register("shows", trendingShowsByYear.trigger());
 
-export const trendingUnsetShows = new TableAggregate<AggregateShowsParams<boolean, [number, number]>>(components.trendingUnsetShows, {
-  namespace: ({ preference, premiered, rating }) => {
-    if (rating > 0 && !!premiered && preference === "unset") return true;
-  },
-  sortKey: ({ rating, weight }) => [-weight, -rating],
-});
-triggers.register("shows", trendingUnsetShows.trigger());
-
-export const trendingUnsetShowsByYear = new TableAggregate<AggregateShowsParams<number, [number, number]>>(
-  components.trendingUnsetShowsByYear,
+export const trendingShowsByPreference = new TableAggregate<AggregateShowsParams<string, [number, number, string]>>(
+  components.trendingShowsByPreference,
   {
     namespace: ({ preference, premiered, rating }) => {
-      if (rating > 0 && !!premiered && preference === "unset") return getYear(premiered);
+      if (rating > 0 && !!premiered && preference) return preference;
     },
-    sortKey: ({ rating, weight }) => [-weight, -rating],
+    sortKey: ({ rating, weight, name }) => [-weight, -rating, name],
   }
 );
-triggers.register("shows", trendingUnsetShowsByYear.trigger());
+triggers.register("shows", trendingShowsByPreference.trigger());
+
+export const trendingShowsByPreferenceAndYear = new TableAggregate<AggregateShowsParams<string, [number, number, string]>>(
+  components.trendingShowsByPreferenceAndYear,
+  {
+    namespace: ({ preference, premiered, rating }) => {
+      if (rating > 0 && !!premiered && preference) return `${preference}-${getYear(premiered)}`;
+    },
+    sortKey: ({ rating, weight, name }) => [-weight, -rating, name],
+  }
+);
+triggers.register("shows", trendingShowsByPreferenceAndYear.trigger());
 
 // MIGRATIONS ------------------------------------------------------------------------------------------------------------------------------
 export const migrations = new Migrations<DataModel>(components.migrations);
@@ -116,12 +119,12 @@ export const backfillAggregatesMigration = migrations.define({
     // await favoriteShows.insertIfDoesNotExist(ctx, doc);
     // await trendingShows.insertIfDoesNotExist(ctx, doc);
     // await trendingShowsByYear.insertIfDoesNotExist(ctx, doc);
-    // await trendingUnsetShows.insertIfDoesNotExist(ctx, doc);
-    // await trendingUnsetShowsByYear.insertIfDoesNotExist(ctx, doc);
     // await topRatedShows.insertIfDoesNotExist(ctx, doc);
     // await topRatedShowsByYear.insertIfDoesNotExist(ctx, doc);
-    await topRatedShowsByPreference.insertIfDoesNotExist(ctx, doc);
-    await topRatedShowsByPreferenceAndYear.insertIfDoesNotExist(ctx, doc);
+    // await topRatedShowsByPreference.insertIfDoesNotExist(ctx, doc);
+    // await topRatedShowsByPreferenceAndYear.insertIfDoesNotExist(ctx, doc);
+    await trendingShowsByPreference.insertIfDoesNotExist(ctx, doc);
+    await trendingShowsByPreferenceAndYear.insertIfDoesNotExist(ctx, doc);
   },
 });
 
@@ -152,10 +155,11 @@ export const readPaginatedTopRated = query(
     args: sPaginationWith({ preference: S.optional(FIELDS.shows.preference), year: S.optional(S.NonNegativeInt) }),
     returns: sPaginated(sShow),
     handler: ({ preference, year, ...pageArgs }) => {
-      if (!(preference || year)) return readPaginatedShows({ aggregate: topRatedShows, opts: { namespace: true } })(pageArgs);
+      if (preference && year)
+        return readPaginatedShows({ aggregate: topRatedShowsByPreferenceAndYear, opts: { namespace: `${preference}-${year}` } })(pageArgs);
       if (preference) return readPaginatedShows({ aggregate: topRatedShowsByPreference, opts: { namespace: preference } })(pageArgs);
       if (year) return readPaginatedShows({ aggregate: topRatedShowsByYear, opts: { namespace: year } })(pageArgs);
-      return readPaginatedShows({ aggregate: topRatedShowsByPreferenceAndYear, opts: { namespace: `${preference}-${year}` } })(pageArgs);
+      return readPaginatedShows({ aggregate: topRatedShows, opts: { namespace: true } })(pageArgs);
     },
   })
 );
@@ -173,12 +177,15 @@ export const readPaginatedTopRatedUnset = query(
 
 export const readPaginatedTrending = query(
   queryHandler({
-    args: sPaginationWith({ year: S.optional(S.NonNegativeInt) }),
+    args: sPaginationWith({ preference: S.optional(FIELDS.shows.preference), year: S.optional(S.NonNegativeInt) }),
     returns: sPaginated(sShow),
-    handler: ({ year, ...pageArgs }) =>
-      year !== undefined
-        ? readPaginatedShows({ aggregate: trendingShowsByYear, opts: { namespace: year } })(pageArgs)
-        : readPaginatedShows({ aggregate: trendingShows, opts: { namespace: true } })(pageArgs),
+    handler: ({ preference, year, ...pageArgs }) => {
+      if (preference && year)
+        return readPaginatedShows({ aggregate: trendingShowsByPreferenceAndYear, opts: { namespace: `${preference}-${year}` } })(pageArgs);
+      if (preference) return readPaginatedShows({ aggregate: trendingShowsByPreference, opts: { namespace: preference } })(pageArgs);
+      if (year) return readPaginatedShows({ aggregate: trendingShowsByYear, opts: { namespace: year } })(pageArgs);
+      return readPaginatedShows({ aggregate: trendingShows, opts: { namespace: true } })(pageArgs);
+    },
   })
 );
 
@@ -188,8 +195,8 @@ export const readPaginatedTrendingUnset = query(
     returns: sPaginated(sShow),
     handler: ({ year, ...pageArgs }) =>
       year !== undefined
-        ? readPaginatedShows({ aggregate: trendingUnsetShowsByYear, opts: { namespace: year } })(pageArgs)
-        : readPaginatedShows({ aggregate: trendingUnsetShows, opts: { namespace: true } })(pageArgs),
+        ? readPaginatedShows({ aggregate: trendingShowsByPreferenceAndYear, opts: { namespace: `unset-${year}` } })(pageArgs)
+        : readPaginatedShows({ aggregate: trendingShowsByPreference, opts: { namespace: "unset" } })(pageArgs),
   })
 );
 

@@ -1397,7 +1397,7 @@ export declare const components: {
       >;
     };
   };
-  trendingUnsetShows: {
+  trendingShowsByPreference: {
     btree: {
       aggregateBetween: FunctionReference<
         "query",
@@ -1583,7 +1583,7 @@ export declare const components: {
       >;
     };
   };
-  trendingUnsetShowsByYear: {
+  trendingShowsByPreferenceAndYear: {
     btree: {
       aggregateBetween: FunctionReference<
         "query",
