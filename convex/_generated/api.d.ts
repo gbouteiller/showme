@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as crons from "../crons.js";
 import type * as effex_errors from "../effex/errors.js";
 import type * as effex_fields from "../effex/fields.js";
 import type * as effex_index from "../effex/index.js";
@@ -41,6 +42,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  crons: typeof crons;
   "effex/errors": typeof effex_errors;
   "effex/fields": typeof effex_fields;
   "effex/index": typeof effex_index;

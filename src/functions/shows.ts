@@ -5,7 +5,8 @@ import { DatabaseReader } from "@/convex/effex/services/DatabaseReader";
 import { DatabaseWriter } from "@/convex/effex/services/DatabaseWriter";
 import { optionMapEffect, type Pagination } from "@/convex/effex/utils";
 import type { Shows } from "@/schemas/shows";
-import { channelFromDoc } from "./channels";
+import { channelFromDoc, createMissingChannel } from "./channels";
+import { upsertEpisodesForShow } from "./episodes";
 import { type ReadPaginatedProps, readPaginated } from "./utils";
 
 // TRANSFORMS ------------------------------------------------------------------------------------------------------------------------------
@@ -34,6 +35,14 @@ export const readMaxApiIdShow = E.fn(function* () {
   return yield* db.query("shows").withIndex("by_api").order("desc").first();
 });
 
+export const readShowByApiId = E.fn(function* (apiId: number) {
+  const db = yield* DatabaseReader;
+  return yield* db
+    .query("shows")
+    .withIndex("by_api", (q) => q.eq("apiId", apiId))
+    .first();
+});
+
 export const readPaginatedShows = <K extends Value, N extends Value | undefined>(
   props: Pick<ReadPaginatedProps<"shows", K, N>, "aggregate" | "opts">
 ) =>
@@ -41,3 +50,15 @@ export const readPaginatedShows = <K extends Value, N extends Value | undefined>
     const { page, total } = yield* readPaginated({ ...props, ...pagination, table: "shows" });
     return { items: yield* E.all(page.map(showFromDoc)), total };
   });
+
+// UPSERT ----------------------------------------------------------------------------------------------------------------------------------
+export const upsertShow = E.fn(function* ({ channel, episodes, ...create }: Shows["Create"]) {
+  const db = yield* DatabaseWriter;
+  const existing = yield* readShowByApiId(create.apiId);
+  const channelId = yield* optionMapEffect(channel, createMissingChannel);
+  if (O.isNone(existing)) return yield* db.insert("shows", { ...create, channelId });
+  const { _id: showId, preference } = existing.value;
+  yield* db.patch("shows", showId, { ...create, channelId, preference });
+  if (preference === "favorite") yield* upsertEpisodesForShow({ dtos: [...episodes], showId });
+  return showId;
+});

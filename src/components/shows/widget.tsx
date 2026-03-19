@@ -4,17 +4,13 @@ import type { LinkOptions } from "@tanstack/react-router";
 import Autoplay from "embla-carousel-autoplay";
 import { useState } from "react";
 import { Carousel, type CarouselApi, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/adapted/carousel";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/adapted/select";
 import type { ListArgs, ListData, ListProps, ListQueryProps } from "@/components/list";
 import { LIST, ListActionViewAll } from "@/components/list";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { YearSelect } from "@/components/year-select";
 import type { Shows } from "@/schemas/shows";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "../adapted/card";
 import { ShowsItem, ShowsItemSkeleton } from "./item";
-
-// CONSTS ----------------------------------------------------------------------------------------------------------------------------------
-const CURRENT_YEAR = new Date().getFullYear();
-const YEARS = Array.from({ length: CURRENT_YEAR - 1960 + 1 }, (_, i) => 1960 + i).reverse();
 
 // MAIN ------------------------------------------------------------------------------------------------------------------------------------
 export function ShowsWidget({ empty, handler, title, titleIcon, viewAll }: ShowsWidgetProps) {
@@ -31,7 +27,13 @@ export function ShowsWidget({ empty, handler, title, titleIcon, viewAll }: Shows
           {title}
         </CardTitle>
         <CardAction className={LIST.action()}>
-          <YearSelect setPageIndex={setPageIndex} setYear={setYear} year={year} />
+          <YearSelect
+            onValueChange={(value) => {
+              setPageIndex(0);
+              setYear(value);
+            }}
+            year={year}
+          />
           <ListActionViewAll link={viewAll} />
         </CardAction>
       </CardHeader>
@@ -98,31 +100,6 @@ export type WidgetItemsProps = {
   empty: React.ReactNode;
   query: { result: UseQueryResult<ListData<Shows["Entity"]>> };
 };
-
-// YEAR SELECT -----------------------------------------------------------------------------------------------------------------------------
-function YearSelect({ setPageIndex, setYear, year }: YearSelectProps) {
-  const handleYearChange = (value: number | null) => {
-    setPageIndex(0);
-    setYear(value ?? undefined);
-  };
-
-  return (
-    <Select onValueChange={handleYearChange} value={year}>
-      <SelectTrigger size="sm">
-        <SelectValue placeholder="All years" render={() => <span>{year === undefined ? "All" : year}</span>} />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value={undefined}>All years</SelectItem>
-        {YEARS.map((year) => (
-          <SelectItem key={year} value={year}>
-            {year}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-type YearSelectProps = { setPageIndex: (pageIndex: number) => void; setYear: (year: number | undefined) => void; year: number | undefined };
 
 // TYPES -----------------------------------------------------------------------------------------------------------------------------------
 type ShowsWidgetArgs = ListArgs & { year?: number };

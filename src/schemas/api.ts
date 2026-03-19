@@ -23,7 +23,7 @@ export const sApiImageDto = S.Struct({
 // LINK ------------------------------------------------------------------------------------------------------------------------------------
 export const sApiLinkDto = S.Struct({
   href: S.String,
-  name: S.NullOr(S.String),
+  name: S.NullishOr(S.String),
 });
 
 // CHANNEL ---------------------------------------------------------------------------------------------------------------------------------
@@ -127,12 +127,12 @@ export const sApiSeasonDto = S.Struct({
 
 // SHOW ------------------------------------------------------------------------------------------------------------------------------------
 export const sApiShowDto = S.Struct({
-  _embedded: S.NullOr(
+  _embedded: S.NullishOr(
     S.Struct({
-      cast: S.NullOr(S.Array(sApiCastDto)),
-      crew: S.NullOr(S.Array(sApiCrewDto)),
-      episodes: S.NullOr(S.Array(sApiEpisodeDto)),
-      seasons: S.NullOr(S.Array(sApiSeasonDto)),
+      cast: S.NullishOr(S.Array(sApiCastDto)),
+      crew: S.NullishOr(S.Array(sApiCrewDto)),
+      episodes: S.NullishOr(S.Array(sApiEpisodeDto)),
+      seasons: S.NullishOr(S.Array(sApiSeasonDto)),
     })
   ),
   _links: S.Struct({

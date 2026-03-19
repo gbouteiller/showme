@@ -5,7 +5,7 @@ import { DatabaseWriter } from "@/convex/effex/services/DatabaseWriter";
 import { optionMapEffect } from "@/convex/effex/utils";
 import type { Channels } from "@/schemas/channels";
 import type { Shows } from "@/schemas/shows";
-import { countryFromDoc } from "./countries";
+import { countryFromDoc, createMissingCountry } from "./countries";
 
 // TRANSFORMS ------------------------------------------------------------------------------------------------------------------------------
 export const channelFromDoc = E.fn(function* (doc: Channels["Doc"]) {
@@ -16,6 +16,14 @@ export const channelFromDoc = E.fn(function* (doc: Channels["Doc"]) {
 });
 
 // CREATE ----------------------------------------------------------------------------------------------------------------------------------
+export const createMissingChannel = E.fn(function* ({ country, ...create }: Channels["Create"]) {
+  const db = yield* DatabaseWriter;
+  const existing = yield* readChannelByApiId(create);
+  if (O.isSome(existing)) return existing.value._id;
+  const countryId = yield* optionMapEffect(country, createMissingCountry);
+  return yield* db.insert("channels", { ...create, countryId });
+});
+
 export const createMissingChannels = E.fn(function* (creates: Channels["Create"][], countryIdsByCode: H.HashMap<string, Id<"countries">>) {
   const db = yield* DatabaseWriter;
   return yield* E.forEach(

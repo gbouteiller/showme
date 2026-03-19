@@ -1,7 +1,9 @@
 import type { Value } from "convex/values";
 import { Effect as E, Option as O } from "effect";
 import { NoSuchElementException } from "effect/Cause";
+import type { Id } from "@/convex/_generated/dataModel";
 import { DatabaseReader } from "@/convex/effex/services/DatabaseReader";
+import { DatabaseWriter } from "@/convex/effex/services/DatabaseWriter";
 import type { Pagination } from "@/convex/effex/utils";
 import type { Episodes } from "@/schemas/episodes";
 import type { Shows } from "@/schemas/shows";
@@ -18,6 +20,14 @@ export const episodeFromDoc = E.fn(function* (doc: Episodes["Doc"]) {
 });
 
 // READ ------------------------------------------------------------------------------------------------------------------------------------
+export const hasEpisodeForShow = E.fn(function* ({ _id }: Shows["Ref"]) {
+  const db = yield* DatabaseReader;
+  return (yield* db
+    .query("episodes")
+    .withIndex("by_show", (q) => q.eq("showId", _id))
+    .first()).pipe(O.isSome);
+});
+
 export const readEpisodeByApiId = E.fn(function* ({ apiId }: Episodes["ApiRef"]) {
   const db = yield* DatabaseReader;
   return yield* db
@@ -41,3 +51,17 @@ export const readPaginatedEpisodes = <K extends Value, N extends Value | undefin
     const { page, total } = yield* readPaginated({ ...props, ...pagination, table: "episodes" });
     return { items: yield* E.all(page.map(episodeFromDoc)), total };
   });
+
+// UPSERT ----------------------------------------------------------------------------------------------------------------------------------
+export const upsertEpisodesForShow = E.fn(function* ({ dtos, showId }: { dtos: Episodes["Create"][]; showId: Id<"shows"> }) {
+  const db = yield* DatabaseWriter;
+  const hasEpisode = yield* hasEpisodeForShow({ _id: showId });
+  if (!hasEpisode) return null;
+  const { preference } = (yield* db.get("shows", showId)).pipe(O.getOrThrow);
+  for (const dto of dtos) {
+    const episode = yield* readEpisodeByApiId({ apiId: dto.apiId });
+    if (O.isNone(episode)) yield* db.insert("episodes", { ...dto, preference, showId });
+    else yield* db.patch("episodes", episode.value._id, { ...dto, preference, isWatched: episode.value.isWatched });
+  }
+  return null;
+});

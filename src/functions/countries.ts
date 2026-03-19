@@ -8,6 +8,12 @@ import type { Shows } from "@/schemas/shows";
 export const countryFromDoc = (doc: Countries["Doc"]) => E.succeed(doc);
 
 // CREATE ----------------------------------------------------------------------------------------------------------------------------------
+export const createMissingCountry = E.fn(function* (create: Countries["Create"]) {
+  const db = yield* DatabaseWriter;
+  const existing = yield* readCountryByCode(create);
+  return O.isSome(existing) ? existing.value._id : yield* db.insert("countries", create);
+});
+
 export const createMissingCountries = E.fn(function* (creates: Countries["Create"][]) {
   const db = yield* DatabaseWriter;
 

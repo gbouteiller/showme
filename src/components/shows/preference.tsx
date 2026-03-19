@@ -75,3 +75,31 @@ export function ShowsPreferenceSwitch({ first, second, show }: ShowsPreferenceSw
   );
 }
 type ShowsPreferenceSwitchProps = { first?: Partial<IconButtonProps>; second?: Partial<IconButtonProps>; show: Shows["Entity"] };
+
+// TOGGLE ----------------------------------------------------------------------------------------------------------------------------------
+const PREFERENCE_OPTIONS: { icon: string; label: string; value: Shows["Preference"] }[] = [
+  { icon: "icon-[line-md--heart-filled]", label: "Favorites", value: "favorite" },
+  { icon: "icon-[mdi--heart-broken]", label: "Ignored", value: "ignored" },
+  { icon: "icon-[line-md--heart]", label: "Unset", value: "unset" },
+];
+
+export function ShowsPreferenceToggle({ onValueChange, preference }: ShowsPreferenceToggleProps) {
+  return (
+    <div className="flex items-center">
+      {PREFERENCE_OPTIONS.map((option) => (
+        <IconButton
+          icon={option.icon}
+          key={option.value}
+          label={option.label}
+          onClick={() => onValueChange(option.value)}
+          size="icon-sm"
+          variant={preference === option.value ? "default" : "outline"}
+        />
+      ))}
+    </div>
+  );
+}
+type ShowsPreferenceToggleProps = {
+  onValueChange: (value: Shows["Preference"]) => void;
+  preference?: Shows["Preference"];
+};

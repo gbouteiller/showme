@@ -1,6 +1,7 @@
 import { Schema as S } from "effect";
 import { makeTableHelpers } from "@/convex/effex/services/Helpers";
-import { sApiCountryDto } from "./api";
+import type { sCountryCreate } from "./creates";
+import type { sCountryDto } from "./dtos";
 
 // ENTRY -----------------------------------------------------------------------------------------------------------------------------------
 export const { sDoc: sCountryDoc, sFields: sCountryFields, sRef: sCountryRef } = makeTableHelpers("countries");
@@ -10,12 +11,6 @@ export const sCountryApiRef = S.Struct({ code: S.String });
 
 // ENTITY ----------------------------------------------------------------------------------------------------------------------------------
 export const sCountry = sCountryDoc;
-
-// DTO -------------------------------------------------------------------------------------------------------------------------------------
-export const sCountryDto = sApiCountryDto.pick("code", "name", "timezone");
-
-// CREATE -------------------------------------------------------------------------------------------------------------------------------------
-export const sCountryCreate = sCountryDto;
 
 // TYPES -----------------------------------------------------------------------------------------------------------------------------------
 export type Countries = {

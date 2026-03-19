@@ -2,7 +2,7 @@ import { cva } from "class-variance-authority";
 import type { Simplify } from "effect/Types";
 import { useState } from "react";
 import { Badge } from "@/components/adapted/badge";
-import { CardDescription, CardHeader, CardTitle } from "@/components/adapted/card";
+import { CardAction, CardDescription, CardHeader, CardTitle } from "@/components/adapted/card";
 import { List, type ListArgs, type ListProps, type ListQueryProps } from "@/components/list";
 import type { Shows } from "@/schemas/shows";
 import { ShowsItem, ShowsItemSkeleton } from "./item";
@@ -25,6 +25,9 @@ export function ShowsList({
   titleIcon,
   pageIndex: propPageIndex,
   setPageIndex: propSetPageIndex,
+  filters,
+  preference,
+  year,
 }: ShowsListProps) {
   const [localPageIndex, setLocalPageIndex] = useState(0);
   const pageIndex = propPageIndex ?? localPageIndex;
@@ -39,16 +42,19 @@ export function ShowsList({
       empty={empty}
       fallback={<ShowsItemSkeleton />}
       header={(data) => (
-        <CardHeader>
-          <CardTitle className={LIST.title()}>
-            <span className={LIST.titleIcon({ className: titleIcon })} />
-            {title}
-            <Badge className={LIST.total()}>{data?.total}</Badge>
-          </CardTitle>
-          <CardDescription className={LIST.description()}>{description}</CardDescription>
+        <CardHeader className={LIST.header()}>
+          <div className="flex flex-1 flex-col gap-1.5">
+            <CardTitle className={LIST.title()}>
+              <span className={LIST.titleIcon({ className: titleIcon })} />
+              {title}
+              <Badge className={LIST.total()}>{data?.total}</Badge>
+            </CardTitle>
+            <CardDescription className={LIST.description()}>{description}</CardDescription>
+          </div>
+          {filters && <CardAction>{filters}</CardAction>}
         </CardHeader>
       )}
-      query={{ handler, args: { pageIndex, pageSize: 30 }, setPageIndex }}
+      query={{ handler, args: { pageIndex, pageSize: 30, preference, year }, setPageIndex }}
     >
       {(show) => <ShowsItem key={show._id} show={show} />}
     </List>
@@ -62,8 +68,11 @@ export type ShowsListProps = Simplify<
       titleIcon: string;
       pageIndex?: number;
       setPageIndex?: (pageIndex: number) => void;
+      filters?: React.ReactNode;
+      preference?: "favorite" | "ignored" | "unset";
+      year?: number;
     }
 >;
 
 // TYPES -----------------------------------------------------------------------------------------------------------------------------------
-type ShowsListArgs = ListArgs & { year?: number };
+type ShowsListArgs = ListArgs & { year?: number; preference?: "favorite" | "ignored" | "unset" };

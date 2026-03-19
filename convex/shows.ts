@@ -8,8 +8,9 @@ import { createMissingChannels, getDistinctChannels } from "@/functions/channels
 import { createMissingCountries, getDistinctCountries } from "@/functions/countries";
 import { readEpisodesByShow } from "@/functions/episodes";
 import { startFetcher } from "@/functions/fetcher";
-import { createShows, readMaxApiIdShow, readPaginatedShows, showFromDoc } from "@/functions/shows";
-import { sShow, sShowCreate, sShowRef } from "@/schemas/shows";
+import { createShows, readMaxApiIdShow, readPaginatedShows, showFromDoc, upsertShow } from "@/functions/shows";
+import { sShowCreate } from "@/schemas/creates";
+import { sShow, sShowRef } from "@/schemas/shows";
 import { TvMaze } from "@/services/tvmaze";
 import { api, components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
@@ -17,6 +18,7 @@ import { action, query } from "./_generated/server";
 import { actionHandler, mutationHandler, queryHandler } from "./effex";
 import type { DocNotFoundInTable } from "./effex/errors";
 import { FIELDS } from "./effex/fields";
+import { sId } from "./effex/schemas/genericId";
 import { ActionCtx, type ActionCtxDeps } from "./effex/services/ActionCtx";
 import { DatabaseReader } from "./effex/services/DatabaseReader";
 import { MutationCtx, type MutationCtxDeps } from "./effex/services/MutationCtx";
@@ -265,6 +267,14 @@ export const setPreference = mutation(
   })
 );
 
+export const upsert = mutation(
+  mutationHandler({
+    args: S.Struct({ dto: sShowCreate }),
+    returns: sId("shows"),
+    handler: ({ dto }) => upsertShow(dto),
+  })
+);
+
 // ACTIONS ---------------------------------------------------------------------------------------------------------------------------------
 export const fetchManyMissingPerPage = action(
   actionHandler({
@@ -279,6 +289,39 @@ export const fetchManyMissingPerPage = action(
         const created = yield* runMutation(api.shows.createManyMissing, { dtos: potentialMissingShows });
         yield* runMutation(api.fetcher.update, { created, lastPage: page });
         yield* scheduler.runAfter(0, api.shows.fetchManyMissingPerPage, { page: page + 1 });
+        return null;
+      }).pipe(E.provide(TvMaze.Default)),
+  })
+);
+
+export const updateRemaining = action(
+  actionHandler({
+    args: S.Struct({ updates: S.mutable(S.Array(S.NonNegativeInt)) }),
+    returns: S.Null,
+    handler: ({ updates }): E.Effect<null, HttpClientError, ActionCtxDeps> =>
+      E.gen(function* () {
+        const showId = updates.shift();
+        if (showId === undefined) return null;
+        const { runMutation, scheduler } = yield* ActionCtx;
+        const { fetchShow } = yield* TvMaze;
+        const dto = yield* fetchShow(showId);
+        yield* runMutation(api.shows.upsert, { dto });
+        yield* scheduler.runAfter(0, api.shows.updateRemaining, { updates });
+        return null;
+      }).pipe(E.provide(TvMaze.Default)),
+  })
+);
+
+export const updateAll = action(
+  actionHandler({
+    args: S.Struct({}),
+    returns: S.Null,
+    handler: (): E.Effect<null, HttpClientError, ActionCtxDeps> =>
+      E.gen(function* () {
+        const { runAction } = yield* ActionCtx;
+        const { fetchDailyUpdates } = yield* TvMaze;
+        const updates = yield* fetchDailyUpdates();
+        yield* runAction(api.shows.updateRemaining, { updates });
         return null;
       }).pipe(E.provide(TvMaze.Default)),
   })

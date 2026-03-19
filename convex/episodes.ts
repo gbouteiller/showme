@@ -3,8 +3,9 @@ import type { HttpClientError } from "@effect/platform/HttpClientError";
 import { formatISO, parseISO } from "date-fns";
 import { Effect as E, Option as O, Schema as S } from "effect";
 import type { ParseError } from "effect/ParseResult";
-import { episodeFromDoc, readEpisodeByApiId, readEpisodesByShow, readPaginatedEpisodes } from "@/functions/episodes";
-import { type Episodes, sEpisode, sEpisodeCreate, sEpisodeRef } from "@/schemas/episodes";
+import { episodeFromDoc, readEpisodeByApiId, readEpisodesByShow, readPaginatedEpisodes, upsertEpisodesForShow } from "@/functions/episodes";
+import { sEpisodeCreate } from "@/schemas/creates";
+import { type Episodes, sEpisode, sEpisodeRef } from "@/schemas/episodes";
 import { sShowDoc, sShowRef } from "@/schemas/shows";
 import { TvMaze } from "@/services/tvmaze";
 import { api, components } from "./_generated/api";
@@ -70,7 +71,7 @@ export const readPaginatedUpcoming = query(
 // MUTATION --------------------------------------------------------------------------------------------------------------------------------
 export const createManyMissingForShow = mutation(
   mutationHandler({
-    args: S.Struct({ showId: sId("shows"), dtos: S.Array(sEpisodeCreate) }),
+    args: S.Struct({ showId: sId("shows"), dtos: S.mutable(S.Array(sEpisodeCreate)) }),
     returns: S.Array(sId("episodes")),
     handler: E.fn(function* ({ dtos, showId }) {
       const { db } = yield* MutationCtx;
@@ -128,6 +129,14 @@ export const setShowWatched = mutation(
   })
 );
 
+export const upsertManyMissingForShow = mutation(
+  mutationHandler({
+    args: S.Struct({ showId: sId("shows"), dtos: S.mutable(S.Array(sEpisodeCreate)) }),
+    returns: S.Null,
+    handler: (args) => upsertEpisodesForShow(args),
+  })
+);
+
 // ACTIONS ---------------------------------------------------------------------------------------------------------------------------------
 export const fetchForShow = action(
   actionHandler({
@@ -139,6 +148,20 @@ export const fetchForShow = action(
         const { fetchShowEpisodes } = yield* TvMaze;
         const dtos = yield* fetchShowEpisodes(apiId);
         return yield* runMutation(api.episodes.createManyMissingForShow, { dtos, showId: _id });
+      }).pipe(E.provide(TvMaze.Default)),
+  })
+);
+
+export const refreshForShow = action(
+  actionHandler({
+    args: sShowDoc.pick("_id", "apiId"),
+    returns: S.Null,
+    handler: ({ _id, apiId }): E.Effect<null, HttpClientError | ParseError, ActionCtxDeps> =>
+      E.gen(function* () {
+        const { runMutation } = yield* ActionCtx;
+        const { fetchShowEpisodes } = yield* TvMaze;
+        const dtos = yield* fetchShowEpisodes(apiId);
+        return yield* runMutation(api.episodes.upsertManyMissingForShow, { dtos, showId: _id });
       }).pipe(E.provide(TvMaze.Default)),
   })
 );
