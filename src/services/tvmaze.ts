@@ -23,7 +23,7 @@ export class TvMaze extends Effect.Service<TvMaze>()("TvMaze", {
       );
 
     const fetchDailyUpdates = () =>
-      client.get("/updates/shows?since=day").pipe(
+      client.get("/updates/shows").pipe(
         Effect.flatMap(({ json }) => json),
         Effect.map(S.decodeUnknownSync(sShowUpdatesDto))
       );
