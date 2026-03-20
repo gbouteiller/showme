@@ -1,4 +1,4 @@
-import { convexQuery, useConvexAction, useConvexMutation } from "@convex-dev/react-query";
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Image } from "@unpic/react";
@@ -6,7 +6,6 @@ import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
 import { Badge } from "@/components/adapted/badge";
 import { Button } from "@/components/adapted/button";
-import { IconButton } from "@/components/adapted/icon-button";
 import { SeasonsList } from "@/components/shows/seasons-list";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,7 +24,6 @@ function RouteComponent() {
 
   const { data: show, isLoading } = useQuery(convexQuery(api.shows.readById, { _id }));
   const { mutate: setPreference } = useMutation({ mutationFn: useConvexMutation(api.shows.setPreference) });
-  const { mutate: refresh } = useMutation({ mutationFn: useConvexAction(api.episodes.refreshForShow) });
 
   const cyclePreference = (current: "favorite" | "unset" | "ignored"): "favorite" | "unset" | "ignored" => {
     if (current === "favorite") return "unset";
@@ -48,7 +46,6 @@ function RouteComponent() {
       <div className="mb-6 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <h1 className="font-bold text-2xl">{show.name}</h1>
         <div className="flex gap-2">
-          <IconButton icon="icon-[lucide--refresh-cw]" label="refresh" onClick={() => refresh({ _id, apiId: show.apiId })} />
           <Link to="/shows/favorites">
             <Button className="flex items-center gap-2" variant="outline">
               <span className="icon-[lucide--heart] h-4 w-4" />

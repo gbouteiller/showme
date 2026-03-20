@@ -2,15 +2,15 @@ import { TableAggregate } from "@convex-dev/aggregate";
 import { Migrations } from "@convex-dev/migrations";
 import type { HttpClientError } from "@effect/platform/HttpClientError";
 import { getYear } from "date-fns";
-import { Effect as E, HashMap as H, Option as O, Schema as S } from "effect";
+import { Array as Arr, Effect as E, HashMap as H, Option as O, Schema as S } from "effect";
 import type { ParseError } from "effect/ParseResult";
 import { createMissingChannels, getDistinctChannels } from "@/functions/channels";
 import { createMissingCountries, getDistinctCountries } from "@/functions/countries";
 import { readEpisodesByShow } from "@/functions/episodes";
 import { startFetcher } from "@/functions/fetcher";
-import { createShows, readMaxApiIdShow, readPaginatedShows, showFromDoc, upsertShow } from "@/functions/shows";
-import { sShowCreate } from "@/schemas/creates";
-import { sShow, sShowRef } from "@/schemas/shows";
+import { createShows, isMissingOrStaleShow, readMaxApiIdShow, readPaginatedShows, showFromDoc, upsertShow } from "@/functions/shows";
+import { sShowCreate, sShowWithEpisodesCreate } from "@/schemas/creates";
+import { sShow, sShowRef, sShowRevision } from "@/schemas/shows";
 import { TvMaze } from "@/services/tvmaze";
 import { api, components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
@@ -25,6 +25,9 @@ import { MutationCtx, type MutationCtxDeps } from "./effex/services/MutationCtx"
 import { Scheduler } from "./effex/services/Scheduler";
 import { optionMapEffect, sPaginated, sPaginationWith } from "./effex/utils";
 import { mutation, triggers } from "./triggers";
+
+const SHOW_UPDATE_BATCH_DELAY_MS = 10_000;
+const SHOW_UPDATE_BATCH_SIZE = 100;
 
 // AGGREGATES ------------------------------------------------------------------------------------------------------------------------------
 export const favoriteShows = new TableAggregate<AggregateShowsParams<boolean, string>>(components.favoriteShows, {
@@ -133,6 +136,14 @@ export const backfillAggregatesMigration = migrations.define({
 export const runAggregateBackfill = migrations.runner(internal.shows.backfillAggregatesMigration);
 
 // QUERIES ---------------------------------------------------------------------------------------------------------------------------------
+export const filterRevisionsToRefresh = query(
+  queryHandler({
+    args: S.Struct({ revisions: S.Array(sShowRevision) }),
+    returns: S.Array(sShowRevision),
+    handler: ({ revisions }) => E.filter(revisions, isMissingOrStaleShow),
+  })
+);
+
 export const readById = query(
   queryHandler({
     args: sShowRef,
@@ -255,7 +266,7 @@ export const setPreference = mutation(
 
       yield* db.patch("shows", _id, { preference });
 
-      const episodes = yield* readEpisodesByShow({ _id });
+      const episodes = yield* readEpisodesByShow(_id);
       for (const episode of episodes) yield* db.patch("episodes", episode._id, { preference });
 
       if (preference === "favorite") {
@@ -269,7 +280,7 @@ export const setPreference = mutation(
 
 export const upsert = mutation(
   mutationHandler({
-    args: S.Struct({ dto: sShowCreate }),
+    args: S.Struct({ dto: sShowWithEpisodesCreate }),
     returns: sId("shows"),
     handler: ({ dto }) => upsertShow(dto),
   })
@@ -280,7 +291,7 @@ export const fetchManyMissingPerPage = action(
   actionHandler({
     args: S.Struct({ page: S.NonNegativeInt }),
     returns: S.Null,
-    handler: ({ page }): E.Effect<null, HttpClientError, ActionCtxDeps> =>
+    handler: ({ page }): E.Effect<null, HttpClientError | ParseError, ActionCtxDeps> =>
       E.gen(function* () {
         const { runMutation, scheduler } = yield* ActionCtx;
         const { fetchShows } = yield* TvMaze;
@@ -294,34 +305,38 @@ export const fetchManyMissingPerPage = action(
   })
 );
 
-export const updateRemaining = action(
+export const refreshMany = action(
   actionHandler({
-    args: S.Struct({ updates: S.mutable(S.Array(S.NonNegativeInt)) }),
+    args: S.Struct({ revisions: S.Array(sShowRevision) }),
     returns: S.Null,
-    handler: ({ updates }): E.Effect<null, HttpClientError, ActionCtxDeps> =>
+    handler: ({ revisions }): E.Effect<null, HttpClientError | ParseError, ActionCtxDeps> =>
       E.gen(function* () {
-        const showId = updates.shift();
-        if (showId === undefined) return null;
-        const { runMutation, scheduler } = yield* ActionCtx;
-        const { fetchShow } = yield* TvMaze;
-        const dto = yield* fetchShow(showId);
-        yield* runMutation(api.shows.upsert, { dto });
-        yield* scheduler.runAfter(0, api.shows.updateRemaining, { updates });
+        if (revisions.length === 0) return null;
+        const { runMutation, runQuery } = yield* ActionCtx;
+        const revisionsToRefresh = yield* runQuery(api.shows.filterRevisionsToRefresh, { revisions });
+        if (revisionsToRefresh.length === 0) return null;
+        const { fetchShowWithEpisodes } = yield* TvMaze;
+        for (const { apiId } of revisionsToRefresh) {
+          const dto = yield* fetchShowWithEpisodes(apiId);
+          yield* runMutation(api.shows.upsert, { dto });
+        }
         return null;
       }).pipe(E.provide(TvMaze.Default)),
   })
 );
 
-export const updateAll = action(
+export const refreshAllDaily = action(
   actionHandler({
     args: S.Struct({}),
     returns: S.Null,
     handler: (): E.Effect<null, HttpClientError, ActionCtxDeps> =>
       E.gen(function* () {
-        const { runAction } = yield* ActionCtx;
-        const { fetchDailyUpdates } = yield* TvMaze;
-        const updates = yield* fetchDailyUpdates();
-        yield* runAction(api.shows.updateRemaining, { updates });
+        const { scheduler } = yield* ActionCtx;
+        const { fetchDailyShowRevisions } = yield* TvMaze;
+        const revisions = yield* fetchDailyShowRevisions();
+        const batches = Arr.chunksOf(revisions, SHOW_UPDATE_BATCH_SIZE);
+        for (const [index, batch] of batches.entries())
+          yield* scheduler.runAfter(index * SHOW_UPDATE_BATCH_DELAY_MS, api.shows.refreshMany, { revisions: [...batch] });
         return null;
       }).pipe(E.provide(TvMaze.Default)),
   })

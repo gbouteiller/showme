@@ -1,10 +1,11 @@
 import type { Value } from "convex/values";
-import { Effect as E, Option as O } from "effect";
+import { Array as Arr, Effect as E, Option as O } from "effect";
 import { NoSuchElementException } from "effect/Cause";
-import type { Id } from "@/convex/_generated/dataModel";
+import type { Simplify } from "effect/Types";
 import { DatabaseReader } from "@/convex/effex/services/DatabaseReader";
 import { DatabaseWriter } from "@/convex/effex/services/DatabaseWriter";
 import type { Pagination } from "@/convex/effex/utils";
+import type { ApiId } from "@/schemas/api";
 import type { Episodes } from "@/schemas/episodes";
 import type { Shows } from "@/schemas/shows";
 import { showFromDoc } from "./shows";
@@ -19,16 +20,22 @@ export const episodeFromDoc = E.fn(function* (doc: Episodes["Doc"]) {
   return { ...doc, show };
 });
 
+export const hasAirstamp = (
+  episode: Episodes["Dto"]
+): episode is Simplify<Omit<Episodes["Dto"], "airstamp"> & { readonly airstamp: string }> => episode.airstamp !== null;
+
+export const filterValidEpisodes = (episodes: readonly Episodes["Dto"][]) => Arr.filter(episodes, hasAirstamp);
+
 // READ ------------------------------------------------------------------------------------------------------------------------------------
-export const hasEpisodeForShow = E.fn(function* ({ _id }: Shows["Ref"]) {
+export const hasEpisodesByShow = E.fn(function* (showId: Shows["Id"]) {
   const db = yield* DatabaseReader;
   return (yield* db
     .query("episodes")
-    .withIndex("by_show", (q) => q.eq("showId", _id))
+    .withIndex("by_show", (q) => q.eq("showId", showId))
     .first()).pipe(O.isSome);
 });
 
-export const readEpisodeByApiId = E.fn(function* ({ apiId }: Episodes["ApiRef"]) {
+export const readEpisodeByApiId = E.fn(function* (apiId: ApiId) {
   const db = yield* DatabaseReader;
   return yield* db
     .query("episodes")
@@ -36,11 +43,11 @@ export const readEpisodeByApiId = E.fn(function* ({ apiId }: Episodes["ApiRef"])
     .first();
 });
 
-export const readEpisodesByShow = E.fn(function* ({ _id }: Shows["Ref"]) {
+export const readEpisodesByShow = E.fn(function* (showId: Shows["Id"]) {
   const db = yield* DatabaseReader;
   return yield* db
     .query("episodes")
-    .withIndex("by_show", (q) => q.eq("showId", _id))
+    .withIndex("by_show", (q) => q.eq("showId", showId))
     .collect();
 });
 
@@ -53,15 +60,14 @@ export const readPaginatedEpisodes = <K extends Value, N extends Value | undefin
   });
 
 // UPSERT ----------------------------------------------------------------------------------------------------------------------------------
-export const upsertEpisodesForShow = E.fn(function* ({ dtos, showId }: { dtos: Episodes["Create"][]; showId: Id<"shows"> }) {
+export const upsertEpisodesForShow = E.fn(function* ({ creates, show: { _id: showId, preference } }: UpsertEpisodesForShowArgs) {
   const db = yield* DatabaseWriter;
-  const hasEpisode = yield* hasEpisodeForShow({ _id: showId });
-  if (!hasEpisode) return null;
-  const { preference } = (yield* db.get("shows", showId)).pipe(O.getOrThrow);
-  for (const dto of dtos) {
-    const episode = yield* readEpisodeByApiId({ apiId: dto.apiId });
-    if (O.isNone(episode)) yield* db.insert("episodes", { ...dto, preference, showId });
-    else yield* db.patch("episodes", episode.value._id, { ...dto, preference, isWatched: episode.value.isWatched });
+  for (const create of creates) {
+    const existing = yield* readEpisodeByApiId(create.apiId);
+    const episodeData = { ...create, preference, showId };
+    if (O.isNone(existing)) yield* db.insert("episodes", episodeData);
+    else yield* db.patch("episodes", existing.value._id, { ...episodeData, isWatched: existing.value.isWatched });
   }
   return null;
 });
+type UpsertEpisodesForShowArgs = { creates: Episodes["Create"][]; show: Pick<Shows["Doc"], "_id" | "preference"> };

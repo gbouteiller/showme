@@ -1,5 +1,9 @@
 import { Schema as S } from "effect";
 
+// ID --------------------------------------------------------------------------------------------------------------------------------------
+export const sApiId = S.NonNegativeInt;
+export type ApiId = typeof sApiId.Type;
+
 // COUNTRY ---------------------------------------------------------------------------------------------------------------------------------
 export const sApiCountryDto = S.Struct({
   code: S.String,
@@ -93,7 +97,7 @@ export const sApiEpisodeDto = S.Struct({
     show: S.NullOr(sApiLinkDto),
   }),
   airdate: S.String,
-  airstamp: S.String,
+  airstamp: S.NullOr(S.String),
   airtime: S.String,
   id: S.NonNegativeInt,
   image: S.NullOr(sApiImageDto),

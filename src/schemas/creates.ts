@@ -20,5 +20,9 @@ export const sEpisodeCreate = sEpisodeFields.omit("showId", "preference");
 export const sShowCreate = S.Struct({
   ...sShowFields.omit("channelId").fields,
   channel: S.OptionFromNullOr(sChannelCreate),
+});
+
+export const sShowWithEpisodesCreate = S.Struct({
+  ...sShowCreate.fields,
   episodes: S.Array(sEpisodeCreate),
 });

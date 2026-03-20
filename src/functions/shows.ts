@@ -6,7 +6,7 @@ import { DatabaseWriter } from "@/convex/effex/services/DatabaseWriter";
 import { optionMapEffect, type Pagination } from "@/convex/effex/utils";
 import type { Shows } from "@/schemas/shows";
 import { channelFromDoc, createMissingChannel } from "./channels";
-import { upsertEpisodesForShow } from "./episodes";
+import { hasEpisodesByShow, upsertEpisodesForShow } from "./episodes";
 import { type ReadPaginatedProps, readPaginated } from "./utils";
 
 // TRANSFORMS ------------------------------------------------------------------------------------------------------------------------------
@@ -30,6 +30,11 @@ export const createShows = E.fn(function* (creates: Shows["Create"][], channelId
 });
 
 // READ ------------------------------------------------------------------------------------------------------------------------------------
+export const isMissingOrStaleShow = E.fn(function* (revision: Shows["Revision"]) {
+  const show = yield* readShowByApiId(revision.apiId);
+  return O.isNone(show) || show.value.updated < revision.updated;
+});
+
 export const readMaxApiIdShow = E.fn(function* () {
   const db = yield* DatabaseReader;
   return yield* db.query("shows").withIndex("by_api").order("desc").first();
@@ -52,13 +57,16 @@ export const readPaginatedShows = <K extends Value, N extends Value | undefined>
   });
 
 // UPSERT ----------------------------------------------------------------------------------------------------------------------------------
-export const upsertShow = E.fn(function* ({ channel, episodes, ...create }: Shows["Create"]) {
+export const upsertShow = E.fn(function* ({ channel, episodes: episodeCreates, ...showCreate }: Shows["WithEpisodesCreate"]) {
   const db = yield* DatabaseWriter;
-  const existing = yield* readShowByApiId(create.apiId);
+  const existing = yield* readShowByApiId(showCreate.apiId);
   const channelId = yield* optionMapEffect(channel, createMissingChannel);
-  if (O.isNone(existing)) return yield* db.insert("shows", { ...create, channelId });
-  const { _id: showId, preference } = existing.value;
-  yield* db.patch("shows", showId, { ...create, channelId, preference });
-  if (preference === "favorite") yield* upsertEpisodesForShow({ dtos: [...episodes], showId });
-  return showId;
+
+  if (O.isNone(existing)) return yield* db.insert("shows", { ...showCreate, channelId });
+
+  const { _id, preference } = existing.value;
+
+  yield* db.patch("shows", _id, { ...showCreate, channelId, preference });
+  if (yield* hasEpisodesByShow(_id)) yield* upsertEpisodesForShow({ creates: [...episodeCreates], show: { _id, preference } });
+  return _id;
 });
