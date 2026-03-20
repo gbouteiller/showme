@@ -73,6 +73,7 @@ export const FIELDS = {
     rating: S.NonNegative,
     status: S.Literal("Ended", "In Development", "Running", "To Be Determined"),
     summary: S.OptionFromNullOr(S.String),
+    trackEpisodes: S.Boolean,
     thumbnail: S.OptionFromNullOr(S.String),
     updated: S.NonNegativeInt,
     weight: S.NonNegativeInt,

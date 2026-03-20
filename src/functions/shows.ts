@@ -6,7 +6,7 @@ import { DatabaseWriter } from "@/convex/effex/services/DatabaseWriter";
 import { optionMapEffect, type Pagination } from "@/convex/effex/utils";
 import type { Shows } from "@/schemas/shows";
 import { channelFromDoc, createMissingChannel } from "./channels";
-import { hasEpisodesByShow, upsertEpisodesForShow } from "./episodes";
+import { upsertEpisodesForShow } from "./episodes";
 import { type ReadPaginatedProps, readPaginated } from "./utils";
 
 // TRANSFORMS ------------------------------------------------------------------------------------------------------------------------------
@@ -57,16 +57,26 @@ export const readPaginatedShows = <K extends Value, N extends Value | undefined>
   });
 
 // UPSERT ----------------------------------------------------------------------------------------------------------------------------------
-export const upsertShow = E.fn(function* ({ channel, episodes: episodeCreates, ...showCreate }: Shows["WithEpisodesCreate"]) {
+export const upsertShow = E.fn(function* ({ channel, ...showCreate }: Shows["Create"] | Shows["WithEpisodesCreate"]) {
   const db = yield* DatabaseWriter;
   const existing = yield* readShowByApiId(showCreate.apiId);
   const channelId = yield* optionMapEffect(channel, createMissingChannel);
+  const nextTrackEpisodes = showCreate.trackEpisodes === true;
 
-  if (O.isNone(existing)) return yield* db.insert("shows", { ...showCreate, channelId });
+  if (O.isNone(existing)) {
+    const showId = yield* db.insert("shows", { ...showCreate, channelId, trackEpisodes: nextTrackEpisodes });
+    if ("episodes" in showCreate && nextTrackEpisodes) {
+      yield* upsertEpisodesForShow({ creates: [...showCreate.episodes], show: { _id: showId, preference: showCreate.preference } });
+    }
+    return showId;
+  }
 
-  const { _id, preference } = existing.value;
+  const { _id, preference, trackEpisodes } = existing.value;
+  const shouldTrackEpisodes = trackEpisodes === true || nextTrackEpisodes;
 
-  yield* db.patch("shows", _id, { ...showCreate, channelId, preference });
-  if (yield* hasEpisodesByShow(_id)) yield* upsertEpisodesForShow({ creates: [...episodeCreates], show: { _id, preference } });
+  yield* db.patch("shows", _id, { ...showCreate, channelId, preference, trackEpisodes: shouldTrackEpisodes });
+  if ("episodes" in showCreate && shouldTrackEpisodes) {
+    yield* upsertEpisodesForShow({ creates: [...showCreate.episodes], show: { _id, preference } });
+  }
   return _id;
 });

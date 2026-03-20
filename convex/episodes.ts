@@ -145,6 +145,7 @@ export const fetchForShow = action(
       E.gen(function* () {
         const { runMutation } = yield* ActionCtx;
         const { fetchShowEpisodes } = yield* TvMaze;
+        yield* runMutation(api.shows.setTrackEpisodes, { _id, trackEpisodes: true });
         const dtos = yield* fetchShowEpisodes(apiId);
         return yield* runMutation(api.episodes.createManyMissingForShow, { dtos, showId: _id });
       }).pipe(E.provide(TvMaze.Default)),

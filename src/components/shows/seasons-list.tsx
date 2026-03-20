@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 type SeasonsListProps = {
   showId: Id<"shows">;
   apiId: number;
+  trackEpisodes: boolean;
 };
 
 type Season = {
@@ -37,14 +38,21 @@ type Season = {
   }>;
 };
 
-export function SeasonsList({ apiId, showId }: SeasonsListProps) {
+export function SeasonsList({ apiId, showId, trackEpisodes }: SeasonsListProps) {
   const { data: episodes, isLoading } = useQuery(convexQuery(api.episodes.readByShow, { _id: showId }));
   const { mutate: setWatched } = useMutation({
     mutationFn: useConvexMutation(api.episodes.setWatched),
   });
-  const { isPending: isFetching, mutate: fetchEpisodes } = useMutation<any, Error, { _id: Id<"shows">; apiId: number }>({
+  const { mutate: setTrackEpisodes } = useMutation({
+    mutationFn: useConvexMutation(api.shows.setTrackEpisodes),
+  });
+  const { isPending: isFetching, mutate: fetchEpisodes } = useMutation({
     mutationFn: useConvexAction(api.episodes.fetchForShow),
   });
+
+  useEffect(() => {
+    if (!trackEpisodes) setTrackEpisodes({ _id: showId, trackEpisodes: true });
+  }, [showId, setTrackEpisodes, trackEpisodes]);
 
   useEffect(() => {
     if (!isLoading && episodes && episodes.length === 0 && !isFetching) {
@@ -70,7 +78,7 @@ export function SeasonsList({ apiId, showId }: SeasonsListProps) {
     // Toggle all episodes in the season
     for (const episode of seasonEpisodes) {
       if (episode.isWatched === allWatched) {
-        toggleWatched({ _id: episode._id });
+        setWatched({ _id: episode._id, isWatched: !allWatched });
       }
     }
 

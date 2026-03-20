@@ -142,7 +142,7 @@ function RouteComponent() {
             </TabsList>
 
             <TabsContent value="seasons">
-              <SeasonsList apiId={show.apiId} showId={_id} />
+              <SeasonsList apiId={show.apiId} showId={_id} trackEpisodes={show.trackEpisodes} />
             </TabsContent>
 
             <TabsContent value="cast">

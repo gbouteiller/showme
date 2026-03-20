@@ -8,7 +8,7 @@ import { createMissingChannels, getDistinctChannels } from "@/functions/channels
 import { createMissingCountries, getDistinctCountries } from "@/functions/countries";
 import { readEpisodesByShow } from "@/functions/episodes";
 import { startFetcher } from "@/functions/fetcher";
-import { createShows, isMissingOrStaleShow, readMaxApiIdShow, readPaginatedShows, showFromDoc, upsertShow } from "@/functions/shows";
+import { createShows, readMaxApiIdShow, readPaginatedShows, readShowByApiId, showFromDoc, upsertShow } from "@/functions/shows";
 import { sShowCreate, sShowWithEpisodesCreate } from "@/schemas/creates";
 import { sShow, sShowRef, sShowRevision } from "@/schemas/shows";
 import { TvMaze } from "@/services/tvmaze";
@@ -28,6 +28,7 @@ import { mutation, triggers } from "./triggers";
 
 const SHOW_UPDATE_BATCH_DELAY_MS = 10_000;
 const SHOW_UPDATE_BATCH_SIZE = 100;
+const sShowRefreshPlan = S.Struct({ apiId: S.NonNegativeInt, includeEpisodes: S.Boolean });
 
 // AGGREGATES ------------------------------------------------------------------------------------------------------------------------------
 export const favoriteShows = new TableAggregate<AggregateShowsParams<boolean, string>>(components.favoriteShows, {
@@ -118,6 +119,18 @@ triggers.register("shows", trendingShowsByPreferenceAndYear.trigger());
 export const migrations = new Migrations<DataModel>(components.migrations);
 export const run = migrations.runner();
 
+export const backfillTrackEpisodesMigration = migrations.define({
+  table: "shows",
+  migrateOne: async (ctx, doc) => {
+    if (doc.trackEpisodes !== undefined) return;
+    const firstEpisode = await ctx.db
+      .query("episodes")
+      .withIndex("by_show", (q) => q.eq("showId", doc._id))
+      .first();
+    await ctx.db.patch(doc._id, { trackEpisodes: doc.preference === "favorite" || firstEpisode !== null });
+  },
+});
+
 export const backfillAggregatesMigration = migrations.define({
   table: "shows",
   migrateOne: async (ctx, doc) => {
@@ -133,14 +146,23 @@ export const backfillAggregatesMigration = migrations.define({
   },
 });
 
+export const runTrackEpisodesBackfill = migrations.runner(internal.shows.backfillTrackEpisodesMigration);
 export const runAggregateBackfill = migrations.runner(internal.shows.backfillAggregatesMigration);
 
 // QUERIES ---------------------------------------------------------------------------------------------------------------------------------
-export const filterRevisionsToRefresh = query(
+export const readRefreshPlans = query(
   queryHandler({
     args: S.Struct({ revisions: S.Array(sShowRevision) }),
-    returns: S.Array(sShowRevision),
-    handler: ({ revisions }) => E.filter(revisions, isMissingOrStaleShow),
+    returns: S.Array(sShowRefreshPlan),
+    handler: E.fn(function* ({ revisions }) {
+      const refreshPlans: (typeof sShowRefreshPlan.Type)[] = [];
+      for (const revision of revisions) {
+        const show = yield* readShowByApiId(revision.apiId);
+        if (O.isSome(show) && show.value.updated >= revision.updated) continue;
+        refreshPlans.push({ apiId: revision.apiId, includeEpisodes: O.isSome(show) && show.value.trackEpisodes });
+      }
+      return refreshPlans;
+    }),
   })
 );
 
@@ -278,9 +300,21 @@ export const setPreference = mutation(
   })
 );
 
+export const setTrackEpisodes = mutation(
+  mutationHandler({
+    args: S.Struct({ ...sShowRef.fields, trackEpisodes: S.Boolean }),
+    returns: S.Null,
+    handler: E.fn(function* ({ _id, trackEpisodes }): E.fn.Return<null, ParseError, MutationCtxDeps> {
+      const { db } = yield* MutationCtx;
+      yield* db.patch("shows", _id, { trackEpisodes });
+      return null;
+    }),
+  })
+);
+
 export const upsert = mutation(
   mutationHandler({
-    args: S.Struct({ dto: sShowWithEpisodesCreate }),
+    args: S.Struct({ dto: S.Union(sShowCreate, sShowWithEpisodesCreate) }),
     returns: sId("shows"),
     handler: ({ dto }) => upsertShow(dto),
   })
@@ -313,11 +347,11 @@ export const refreshMany = action(
       E.gen(function* () {
         if (revisions.length === 0) return null;
         const { runMutation, runQuery } = yield* ActionCtx;
-        const revisionsToRefresh = yield* runQuery(api.shows.filterRevisionsToRefresh, { revisions });
-        if (revisionsToRefresh.length === 0) return null;
-        const { fetchShowWithEpisodes } = yield* TvMaze;
-        for (const { apiId } of revisionsToRefresh) {
-          const dto = yield* fetchShowWithEpisodes(apiId);
+        const refreshPlans = yield* runQuery(api.shows.readRefreshPlans, { revisions });
+        if (refreshPlans.length === 0) return null;
+        const { fetchShow, fetchShowWithEpisodes } = yield* TvMaze;
+        for (const { apiId, includeEpisodes } of refreshPlans) {
+          const dto = includeEpisodes ? yield* fetchShowWithEpisodes(apiId) : yield* fetchShow(apiId);
           yield* runMutation(api.shows.upsert, { dto });
         }
         return null;
