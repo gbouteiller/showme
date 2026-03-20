@@ -12,7 +12,7 @@ export class TvMaze extends E.Service<TvMaze>()("TvMaze", {
     );
 
     const fetchDailyShowRevisions = E.fn(function* () {
-      const { json } = yield* client.get("/updates/shows");
+      const { json } = yield* client.get("/updates/shows?since=day");
       return yield* S.decodeUnknown(sShowRevisionDtos)(yield* json);
     });
 
