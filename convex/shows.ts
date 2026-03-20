@@ -314,7 +314,7 @@ export const setTrackEpisodes = mutation(
 
 export const upsert = mutation(
   mutationHandler({
-    args: S.Struct({ dto: S.Union(sShowCreate, sShowWithEpisodesCreate) }),
+    args: S.Struct({ dto: S.Union(sShowWithEpisodesCreate, sShowCreate) }),
     returns: sId("shows"),
     handler: ({ dto }) => upsertShow(dto),
   })
