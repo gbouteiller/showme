@@ -363,7 +363,7 @@ export const refreshAllDaily = action(
   actionHandler({
     args: S.Struct({}),
     returns: S.Null,
-    handler: (): E.Effect<null, HttpClientError, ActionCtxDeps> =>
+    handler: (): E.Effect<null, HttpClientError | ParseError, ActionCtxDeps> =>
       E.gen(function* () {
         const { scheduler } = yield* ActionCtx;
         const { fetchDailyShowRevisions } = yield* TvMaze;

@@ -11,31 +11,30 @@ export class TvMaze extends E.Service<TvMaze>()("TvMaze", {
       HttpClient.mapRequest(flow(HttpClientRequest.prependUrl("https://api.tvmaze.com"), HttpClientRequest.acceptJson))
     );
 
-    const fetchDailyShowRevisions = () =>
-      client.get("/updates/shows").pipe(
-        E.flatMap(({ json }) => json),
-        E.map(S.decodeUnknownSync(sShowRevisionDtos))
-      );
+    const fetchDailyShowRevisions = E.fn(function* () {
+      const { json } = yield* client.get("/updates/shows");
+      return yield* S.decodeUnknown(sShowRevisionDtos)(yield* json);
+    });
 
     const fetchShow = E.fn(function* (showId: number) {
       const { json } = yield* client.get(`/shows/${showId}`);
-      return yield* S.decodeUnknown(sShowDto)(json);
+      return yield* S.decodeUnknown(sShowDto)(yield* json);
     });
 
     const fetchShowWithEpisodes = E.fn(function* (showId: number) {
       const { json } = yield* client.get(`/shows/${showId}?embed=episodes`);
-      const show = yield* S.decodeUnknown(sShowWithEpisodesDto)(json);
+      const show = yield* S.decodeUnknown(sShowWithEpisodesDto)(yield* json);
       return { ...show, episodes: filterValidEpisodes(show.episodes) };
     });
 
     const fetchShows = E.fn(function* (page = 1) {
       const { json } = yield* client.get(`/shows?page=${page}`);
-      return yield* S.decodeUnknown(S.mutable(S.Array(sShowDto)))(json);
+      return yield* S.decodeUnknown(S.mutable(S.Array(sShowDto)))(yield* json);
     });
 
     const fetchShowEpisodes = E.fn(function* (showId: number) {
       const { json } = yield* client.get(`/shows/${showId}/episodes`);
-      const episodes = yield* S.decodeUnknown(S.mutable(S.Array(sEpisodeDto)))(json);
+      const episodes = yield* S.decodeUnknown(S.mutable(S.Array(sEpisodeDto)))(yield* json);
       return filterValidEpisodes(episodes);
     });
 

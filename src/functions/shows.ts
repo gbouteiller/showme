@@ -24,7 +24,7 @@ export const createShows = E.fn(function* (creates: Shows["Create"][], channelId
     creates,
     E.fn(function* ({ channel, ...create }) {
       const channelId = O.andThen(channel, ({ apiId }) => H.get(channelIdsByApiId, apiId));
-      return [create.apiId, yield* db.insert("shows", { ...create, channelId })] as const;
+      return [create.apiId, yield* db.insert("shows", { ...create, channelId, preference: "unset", trackEpisodes: false })] as const;
     })
   ).pipe(E.map(H.fromIterable));
 });
@@ -61,22 +61,15 @@ export const upsertShow = E.fn(function* ({ channel, ...showCreate }: Shows["Cre
   const db = yield* DatabaseWriter;
   const existing = yield* readShowByApiId(showCreate.apiId);
   const channelId = yield* optionMapEffect(channel, createMissingChannel);
-  const nextTrackEpisodes = showCreate.trackEpisodes === true;
 
-  if (O.isNone(existing)) {
-    const showId = yield* db.insert("shows", { ...showCreate, channelId, trackEpisodes: nextTrackEpisodes });
-    if ("episodes" in showCreate && nextTrackEpisodes) {
-      yield* upsertEpisodesForShow({ creates: [...showCreate.episodes], show: { _id: showId, preference: showCreate.preference } });
-    }
-    return showId;
-  }
+  if (O.isNone(existing)) return yield* db.insert("shows", { ...showCreate, channelId, preference: "unset", trackEpisodes: false });
 
   const { _id, preference, trackEpisodes } = existing.value;
-  const shouldTrackEpisodes = trackEpisodes === true || nextTrackEpisodes;
 
-  yield* db.patch("shows", _id, { ...showCreate, channelId, preference, trackEpisodes: shouldTrackEpisodes });
-  if ("episodes" in showCreate && shouldTrackEpisodes) {
+  yield* db.patch("shows", _id, { ...showCreate, channelId });
+
+  if ("episodes" in showCreate && trackEpisodes)
     yield* upsertEpisodesForShow({ creates: [...showCreate.episodes], show: { _id, preference } });
-  }
+
   return _id;
 });

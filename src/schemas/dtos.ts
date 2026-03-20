@@ -55,21 +55,19 @@ type ApiShowBaseDto = Omit<typeof sApiShowDto.Type, (typeof toOmit)[number] | "_
 
 const sShowBaseDto = S.Struct({
   ...sApiShowDto.pick("ended", "genres", "name", "officialSite", "premiered", "status", "summary", "updated", "weight").fields,
-  ...sShowFields.pick("apiId", "preference", "trackEpisodes").fields,
+  ...sShowFields.pick("apiId").fields,
   channel: S.NullOr(sChannelDto),
   image: S.NullOr(S.String),
   rating: S.NonNegative,
   thumbnail: S.NullOr(S.String),
 });
 
-const showBaseFromApi = ({ id: apiId, image, network, rating, webChannel, ...rest }: ApiShowBaseDto, trackEpisodes = false) => ({
+const showBaseFromApi = ({ id: apiId, image, network, rating, webChannel, ...rest }: ApiShowBaseDto) => ({
   ...rest,
   apiId,
   channel: webChannel ?? network,
   image: image?.original ?? null,
-  preference: "unset" as const,
   rating: rating.average ?? 0,
-  trackEpisodes,
   thumbnail: image?.medium ?? null,
 });
 
@@ -84,7 +82,7 @@ export const sShowWithEpisodesDto = S.transformOrFail(
   S.Struct({ ...sShowBaseDto.fields, episodes: S.Array(sEpisodeDto) }),
   {
     strict: true,
-    decode: ({ _embedded, ...show }) => ParseResult.succeed({ ...showBaseFromApi(show, true), episodes: _embedded?.episodes ?? [] }),
+    decode: ({ _embedded, ...show }) => ParseResult.succeed({ ...showBaseFromApi(show), episodes: _embedded?.episodes ?? [] }),
     encode: (create, _, ast) => ParseResult.fail(new ParseResult.Forbidden(ast, create, "Forbidden.")),
   }
 );
