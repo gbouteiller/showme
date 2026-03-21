@@ -1,17 +1,16 @@
-import { Id } from "@rjdellecese/confect/server";
 import { Schema as S } from "effect";
 import { sId } from "./schemas/genericId";
 
 // CONST -----------------------------------------------------------------------------------------------------------------------------------
 export const FIELDS = {
   casts: {
-    characterId: Id.Id("characters"),
-    personId: Id.Id("persons"),
-    showId: Id.Id("shows"),
+    characterId: sId("characters"),
+    personId: sId("persons"),
+    showId: sId("shows"),
   },
   channels: {
     apiId: S.NonNegativeInt,
-    countryId: S.OptionFromNullOr(Id.Id("countries")),
+    countryId: S.OptionFromNullOr(sId("countries")),
     name: S.String,
     officialSite: S.OptionFromNullOr(S.String),
   },
@@ -52,7 +51,7 @@ export const FIELDS = {
   persons: {
     apiId: S.NonNegativeInt,
     birthday: S.NullOr(S.String),
-    countryId: S.NullOr(Id.Id("countries")),
+    countryId: S.NullOr(sId("countries")),
     deathday: S.NullOr(S.String),
     gender: S.NullOr(S.String),
     image: S.NullOr(S.String),
@@ -62,7 +61,7 @@ export const FIELDS = {
   },
   shows: {
     apiId: S.NonNegativeInt,
-    channelId: S.OptionFromNullOr(Id.Id("channels")),
+    channelId: S.OptionFromNullOr(sId("channels")),
     ended: S.OptionFromNullOr(S.String),
     genres: S.Array(S.String),
     image: S.OptionFromNullOr(S.String),
