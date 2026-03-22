@@ -1,12 +1,11 @@
 import { TableAggregate } from "@convex-dev/aggregate";
-import type { HttpClientError } from "@effect/platform/HttpClientError";
 import { formatISO, parseISO } from "date-fns";
-import { Effect as E, Option as O, Schema as S } from "effect";
-import type { ParseError } from "effect/ParseResult";
+import { Effect as E, Option as O, Schema as S, Struct } from "effect";
+import type { HttpClientError } from "effect/unstable/http/HttpClientError";
 import { episodeFromDoc, hasEpisodesByShow, readEpisodeByApiId, readEpisodesByShow, readPaginatedEpisodes } from "@/functions/episodes";
 import { sEpisodeCreate } from "@/schemas/creates";
-import { type Episodes, sEpisode, sEpisodeRef } from "@/schemas/episodes";
-import { sShowDoc, sShowRef } from "@/schemas/shows";
+import { type Episodes, sEpisode } from "@/schemas/episodes";
+import { sShow } from "@/schemas/shows";
 import { TvMaze } from "@/services/tvmaze";
 import { api, components } from "./_generated/api";
 import type { DataModel, Id } from "./_generated/dataModel";
@@ -35,18 +34,18 @@ triggers.register("episodes", upcomingEpisodes.trigger());
 // QUERIES ---------------------------------------------------------------------------------------------------------------------------------
 export const hasByShow = query(
   queryHandler({
-    args: sShowRef,
+    args: sEpisode.mapFields(Struct.pick(["showId"])),
     returns: S.Boolean,
-    handler: ({ _id }) => hasEpisodesByShow(_id),
+    handler: ({ showId }) => hasEpisodesByShow(showId),
   })
 );
 
 export const readByShow = query(
   queryHandler({
-    args: sShowRef,
+    args: sEpisode.mapFields(Struct.pick(["showId"])),
     returns: S.Array(sEpisode),
-    handler: E.fn(function* ({ _id }) {
-      const docs = yield* readEpisodesByShow(_id);
+    handler: E.fn(function* ({ showId }) {
+      const docs = yield* readEpisodesByShow(showId);
       return yield* E.all(docs.map(episodeFromDoc));
     }),
   })
@@ -54,7 +53,7 @@ export const readByShow = query(
 
 export const readPaginatedUnwatched = query(
   queryHandler({
-    args: sPaginationWith({ timestamp: S.NonNegativeInt }),
+    args: sPaginationWith({ timestamp: S.Int }),
     returns: sPaginated(sEpisode),
     handler: ({ timestamp, ...pageArgs }) =>
       readPaginatedEpisodes({
@@ -66,7 +65,7 @@ export const readPaginatedUnwatched = query(
 
 export const readPaginatedUpcoming = query(
   queryHandler({
-    args: sPaginationWith({ timestamp: S.NonNegativeInt }),
+    args: sPaginationWith({ timestamp: S.Int }),
     returns: sPaginated(sEpisode),
     handler: ({ timestamp, ...pageArgs }) =>
       readPaginatedEpisodes({
@@ -94,7 +93,7 @@ export const createManyMissingForShow = mutation(
 
 export const setWatched = mutation(
   mutationHandler({
-    args: S.Struct({ isWatched: S.Boolean, ...sEpisodeRef.fields }),
+    args: sEpisode.mapFields(Struct.pick(["_id", "isWatched"])),
     returns: S.Null,
     handler: E.fn(function* ({ _id, isWatched }) {
       const db = yield* DatabaseWriter;
@@ -106,7 +105,7 @@ export const setWatched = mutation(
 
 export const setSeasonWatched = mutation(
   mutationHandler({
-    args: S.Struct({ isWatched: S.Boolean, season: S.Int, showId: sId("shows") }),
+    args: sEpisode.mapFields(Struct.pick(["isWatched", "season", "showId"])),
     returns: S.Null,
     handler: E.fn(function* ({ isWatched, season, showId }) {
       const db = yield* DatabaseWriter;
@@ -122,7 +121,7 @@ export const setSeasonWatched = mutation(
 
 export const setShowWatched = mutation(
   mutationHandler({
-    args: S.Struct({ isWatched: S.Boolean, showId: sId("shows") }),
+    args: sEpisode.mapFields(Struct.pick(["isWatched", "showId"])),
     returns: S.Null,
     handler: E.fn(function* ({ isWatched, showId }) {
       const db = yield* DatabaseWriter;
@@ -139,16 +138,16 @@ export const setShowWatched = mutation(
 // ACTIONS ---------------------------------------------------------------------------------------------------------------------------------
 export const fetchForShow = action(
   actionHandler({
-    args: sShowDoc.pick("_id", "apiId"),
+    args: sShow.mapFields(Struct.pick(["_id", "apiId"])),
     returns: S.Array(sId("episodes")),
-    handler: ({ _id, apiId }): E.Effect<readonly Id<"episodes">[], HttpClientError | ParseError, ActionCtxDeps> =>
+    handler: ({ _id, apiId }): E.Effect<readonly Id<"episodes">[], S.SchemaError | HttpClientError, ActionCtxDeps> =>
       E.gen(function* () {
         const { runMutation } = yield* ActionCtx;
         const { fetchShowEpisodes } = yield* TvMaze;
         yield* runMutation(api.shows.setTrackEpisodes, { _id, trackEpisodes: true });
         const dtos = yield* fetchShowEpisodes(apiId);
         return yield* runMutation(api.episodes.createManyMissingForShow, { dtos, showId: _id });
-      }).pipe(E.provide(TvMaze.Default)),
+      }).pipe(E.provide(TvMaze.layer)),
   })
 );
 

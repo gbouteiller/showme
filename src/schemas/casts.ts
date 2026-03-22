@@ -1,3 +1,4 @@
+import { Struct } from "effect";
 import { makeTableHelpers } from "@/convex/effex/services/Helpers";
 import { sApiCastDto } from "./api";
 
@@ -8,7 +9,7 @@ export const { sDoc: sCastDoc, sFields: sCastFields, sRef: sCastRef } = makeTabl
 export const sCast = sCastDoc;
 
 // DTO -------------------------------------------------------------------------------------------------------------------------------------
-export const sCastDto = sApiCastDto.pick("character", "person");
+export const sCastDto = sApiCastDto.mapFields(Struct.pick(["character", "person"]));
 
 // TYPES -----------------------------------------------------------------------------------------------------------------------------------
 export type Casts = {

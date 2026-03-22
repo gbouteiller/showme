@@ -1,4 +1,4 @@
-import { Schema as S } from "effect";
+import { Schema as S, Struct } from "effect";
 import { readFetcher, startFetcher, updateFetcher } from "@/functions/fetcher";
 import { sFetcherDoc, sFetcherFields } from "@/schemas/fetcher";
 import { mutation, query } from "./_generated/server";
@@ -32,7 +32,7 @@ export const start = mutation(
 
 export const update = mutation(
   mutationHandler({
-    args: sFetcherFields.pick("created", "lastPage"),
+    args: sFetcherFields.mapFields(Struct.pick(["created", "lastPage"])),
     returns: S.Null,
     handler: ({ created, lastPage }) => updateFetcher((fetcher) => ({ created: fetcher.created + created, lastPage })),
   })

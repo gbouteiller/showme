@@ -7,7 +7,7 @@ import type { sPersonDto } from "./dtos";
 export const { sDoc: sPersonDoc, sFields: sPersonFields, sRef: sPersonRef } = makeTableHelpers("persons");
 
 // ENTITY ----------------------------------------------------------------------------------------------------------------------------------
-export const sPerson = S.Struct({ ...sPersonDoc.fields, country: S.NullOr(sCountry) });
+export const sPerson = sPersonDoc.pipe(S.fieldsAssign({ country: S.OptionFromNullOr(sCountry) }));
 
 // TYPES -----------------------------------------------------------------------------------------------------------------------------------
 export type Persons = {

@@ -1,66 +1,49 @@
-import { ParseResult, Schema as S } from "effect";
+import { Schema as S, SchemaGetter, Struct } from "effect";
 import { sApiChannelDto, sApiCountryDto, sApiEpisodeDto, sApiPersonDto, sApiShowDto } from "./api";
-import { sChannelFields } from "./channels";
 import { sEpisodeFields } from "./episodes";
-import { sShowFields, sShowRevision } from "./shows";
+import { sShowRevision } from "./shows";
 
 // CHANNELS --------------------------------------------------------------------------------------------------------------------------------
-export const sChannelDto = S.transformOrFail(
-  sApiChannelDto,
-  S.Struct({
-    ...sApiChannelDto.omit("id").fields,
-    ...sChannelFields.pick("apiId").fields,
-  }),
-  {
-    strict: true,
-    decode: ({ id: apiId, ...rest }) => ParseResult.succeed({ ...rest, apiId }),
-    encode: (create, _, ast) => ParseResult.fail(new ParseResult.Forbidden(ast, create, "Forbidden.")),
-  }
+const sChannelDtoFrom = sApiChannelDto;
+const sChannelDtoTo = sChannelDtoFrom.mapFields(Struct.renameKeys({ id: "apiId" }));
+
+export const sChannelDto = sChannelDtoFrom.pipe(
+  S.decodeTo(sChannelDtoTo, {
+    decode: SchemaGetter.transform(({ id, ...rest }) => ({ ...rest, apiId: id })),
+    encode: SchemaGetter.forbidden(() => "Forbidden."),
+  })
 );
 
 // COUNTRIES -------------------------------------------------------------------------------------------------------------------------------
-export const sCountryDto = sApiCountryDto.pick("code", "name", "timezone");
+export const sCountryDto = sApiCountryDto.mapFields(Struct.pick(["code", "name", "timezone"]));
 
 // EPISODES --------------------------------------------------------------------------------------------------------------------------------
-export const sEpisodeDto = S.transformOrFail(
-  sApiEpisodeDto.omit("_links", "type", "url"),
-  S.Struct({
-    ...sApiEpisodeDto.pick("airdate", "airstamp", "airtime", "name", "number", "runtime", "season", "summary").fields,
-    ...sEpisodeFields.pick("apiId", "isWatched").fields,
-    image: S.NullOr(S.String),
-    rating: S.NullOr(S.NonNegative),
-    thumbnail: S.NullOr(S.String),
-  }),
-  {
-    strict: true,
-    decode: ({ id: apiId, image, rating, ...rest }) =>
-      ParseResult.succeed({
-        ...rest,
-        apiId,
-        image: image?.original ?? null,
-        isWatched: false,
-        rating: rating.average ?? null,
-        thumbnail: image?.medium ?? null,
-      }),
-    encode: (create, _, ast) => ParseResult.fail(new ParseResult.Forbidden(ast, create, "Forbidden.")),
-  }
+const sEpisodeDtoFrom = sApiEpisodeDto.mapFields(Struct.omit(["_links", "type", "url"]));
+const sEpisodeDtoTo = sEpisodeDtoFrom
+  .mapFields(Struct.renameKeys({ id: "apiId" }))
+  .mapFields(Struct.evolve({ image: () => S.NullOr(S.String), rating: () => S.NullOr(S.Number) }))
+  .mapFields(Struct.assign({ isWatched: sEpisodeFields.fields.isWatched, thumbnail: S.NullOr(S.String) }));
+
+export const sEpisodeDto = sEpisodeDtoFrom.pipe(
+  S.decodeTo(sEpisodeDtoTo, {
+    decode: SchemaGetter.transform(({ id: apiId, image, rating, ...rest }) => ({
+      ...rest,
+      apiId,
+      image: image?.original ?? null,
+      isWatched: false,
+      rating: rating.average ?? null,
+      thumbnail: image?.medium ?? null,
+    })),
+    encode: SchemaGetter.forbidden(() => "Forbidden."),
+  })
 );
 
 // PERSONS ---------------------------------------------------------------------------------------------------------------------------------
-export const sPersonDto = sApiPersonDto.pick("birthday", "deathday", "gender", "id", "image", "name", "updated");
+export const sPersonDto = sApiPersonDto.mapFields(Struct.pick(["birthday", "deathday", "gender", "id", "image", "name", "updated"]));
 
 // SHOWS -----------------------------------------------------------------------------------------------------------------------------------
 const toOmit = ["_links", "averageRuntime", "dvdCountry", "externals", "language", "runtime", "schedule", "type", "url"] as const;
 type ApiShowBaseDto = Omit<typeof sApiShowDto.Type, (typeof toOmit)[number] | "_embedded">;
-
-const sShowBaseDto = S.Struct({
-  ...sApiShowDto.pick("ended", "genres", "name", "officialSite", "premiered", "status", "summary", "updated", "weight").fields,
-  ...sShowFields.pick("apiId").fields,
-  channel: S.NullOr(sChannelDto),
-  image: S.NullOr(S.String),
-  rating: S.NonNegative,
-  thumbnail: S.NullOr(S.String),
-});
 
 const showBaseFromApi = ({ id: apiId, image, network, rating, webChannel, ...rest }: ApiShowBaseDto) => ({
   ...rest,
@@ -71,24 +54,36 @@ const showBaseFromApi = ({ id: apiId, image, network, rating, webChannel, ...res
   thumbnail: image?.medium ?? null,
 });
 
-export const sShowDto = S.transformOrFail(sApiShowDto.omit(...toOmit, "_embedded"), sShowBaseDto, {
-  strict: true,
-  decode: (show) => ParseResult.succeed(showBaseFromApi(show)),
-  encode: (create, _, ast) => ParseResult.fail(new ParseResult.Forbidden(ast, create, "Forbidden.")),
-});
+const sShowDtoFrom = sApiShowDto.mapFields(Struct.omit([...toOmit, "_embedded"]));
+const sShowDtoTo = sShowDtoFrom
+  .mapFields(Struct.omit(["network", "webChannel"]))
+  .mapFields(Struct.renameKeys({ id: "apiId" }))
+  .mapFields(Struct.evolve({ image: () => S.NullOr(S.String), rating: () => S.Number }))
+  .mapFields(Struct.assign({ channel: S.NullOr(sChannelDto), thumbnail: S.NullOr(S.String) }));
 
-export const sShowWithEpisodesDto = S.transformOrFail(
-  sApiShowDto.omit(...toOmit),
-  S.Struct({ ...sShowBaseDto.fields, episodes: S.Array(sEpisodeDto) }),
-  {
-    strict: true,
-    decode: ({ _embedded, ...show }) => ParseResult.succeed({ ...showBaseFromApi(show), episodes: _embedded?.episodes ?? [] }),
-    encode: (create, _, ast) => ParseResult.fail(new ParseResult.Forbidden(ast, create, "Forbidden.")),
-  }
+export const sShowDto = sShowDtoFrom.pipe(
+  S.decodeTo(sShowDtoTo, {
+    decode: SchemaGetter.transform(showBaseFromApi),
+    encode: SchemaGetter.forbidden(() => "Forbidden."),
+  })
 );
 
-export const sShowRevisionDtos = S.transformOrFail(S.Record({ key: S.String, value: S.NonNegativeInt }), S.Array(sShowRevision), {
-  strict: true,
-  decode: (updates) => ParseResult.succeed(Object.entries({ ...updates }).map(([key, value]) => ({ apiId: +key, updated: value }))),
-  encode: (create, _, ast) => ParseResult.fail(new ParseResult.Forbidden(ast, create, "Forbidden.")),
-});
+const sShowWithEpisodesDtoFrom = sApiShowDto.mapFields(Struct.omit([...toOmit]));
+const sShowWithEpisodesDtoTo = sShowDtoTo.pipe(S.fieldsAssign({ episodes: S.Array(sEpisodeDto) }));
+
+export const sShowWithEpisodesDto = sShowWithEpisodesDtoFrom.pipe(
+  S.decodeTo(sShowWithEpisodesDtoTo, {
+    decode: SchemaGetter.transform(({ _embedded, ...show }) => ({ ...showBaseFromApi(show), episodes: _embedded?.episodes ?? [] })),
+    encode: SchemaGetter.forbidden(() => "Forbidden."),
+  })
+);
+
+const sShowRevisionDtosFrom = S.Record(S.String, S.Int);
+const sShowRevisionDtosTo = S.Array(sShowRevision);
+
+export const sShowRevisionDtos = sShowRevisionDtosFrom.pipe(
+  S.decodeTo(sShowRevisionDtosTo, {
+    decode: SchemaGetter.transform((updates) => Object.entries({ ...updates }).map(([key, value]) => ({ apiId: +key, updated: value }))),
+    encode: SchemaGetter.forbidden(() => "Forbidden."),
+  })
+);

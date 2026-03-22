@@ -1,3 +1,4 @@
+import { Struct } from "effect";
 import { makeTableHelpers } from "@/convex/effex/services/Helpers";
 import { sApiCharacterDto } from "./api";
 
@@ -8,7 +9,7 @@ export const { sDoc: sCharacterDoc, sFields: sCharacterFields, sRef: sCharacterR
 export const sCharacter = sCharacterDoc;
 
 // DTO -------------------------------------------------------------------------------------------------------------------------------------
-export const sCharacterDto = sApiCharacterDto.pick("id", "image", "name");
+export const sCharacterDto = sApiCharacterDto.mapFields(Struct.pick(["id", "image", "name"]));
 
 // TYPES -----------------------------------------------------------------------------------------------------------------------------------
 export type Characters = {

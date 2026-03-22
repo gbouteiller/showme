@@ -1,6 +1,5 @@
 import type { WithOptionalSystemFields, WithoutSystemFields } from "convex/server";
-import { Context, type Effect as E, Layer, Option as O, Schema as S } from "effect";
-import type { ParseError } from "effect/ParseResult";
+import { type Effect as E, Layer, Option as O, Schema as S, ServiceMap, Struct } from "effect";
 import type { Doc as NativeDoc, TableNames } from "@/convex/_generated/dataModel";
 import { FIELDS } from "../fields";
 import { sId } from "../schemas/genericId";
@@ -8,31 +7,34 @@ import { optionMapEffect } from "../utils";
 
 // MAKE ------------------------------------------------------------------------------------------------------------------------------------
 export const makeTableHelpers = <TN extends TableNames>(table: TN) => {
-  const ref = { _id: sId(table) };
-  const systemFields = { _creationTime: S.Number, ...ref };
-  const optionalSystemFields = { _creationTime: S.optional(S.Number), _id: S.optional(sId(table)) };
+  const sRef = S.Struct({ _id: sId(table) });
+  const sSystemFields = sRef.pipe(S.fieldsAssign({ _creationTime: S.Number }));
   const sFields = S.Struct(FIELDS[table]);
-  const sDoc = S.Struct({ ...systemFields, ...sFields.fields });
-  const sRef = S.Struct(ref);
-  const decodeDoc = (doc: ConvexDoc) => S.decode(sDoc)(doc) as E.Effect<Doc, ParseError>;
+  const sDoc = sFields.pipe(S.fieldsAssign(sSystemFields.fields));
+  const sInsertable = sFields;
+  const sPatchable = sDoc.mapFields(Struct.map(S.optional));
+  const sReplaceable = sFields.pipe(S.fieldsAssign(sSystemFields.mapFields(Struct.map(S.optional)).fields));
+
+  const decodeDoc = (doc: ConvexDoc) => S.decodeEffect(sDoc)(doc) as E.Effect<Doc, S.SchemaError>;
 
   return {
-    decodeDocs: (docs: ConvexDoc[]) => S.decode(S.mutable(S.Array(sDoc)))(docs) as E.Effect<Doc[], ParseError>,
-    decodeNullableDoc: (doc: ConvexDoc | null): E.Effect<O.Option<Doc>, ParseError> => optionMapEffect(O.fromNullable(doc), decodeDoc),
-    encodeInsertable: (value: Insertable) => S.encode(sFields)(value),
-    encodePatchable: (value: Patchable) => S.encode(S.partial(sDoc))(value),
-    encodeReplaceable: (value: Replaceable) => S.encode(S.Struct({ ...optionalSystemFields, ...sFields.fields }))(value),
+    decodeDocs: (docs: NativeDoc<TN>[]) =>
+      S.decodeEffect(S.mutable(S.Array(sDoc)))(docs as unknown as ConvexDoc[]) as E.Effect<Doc[], S.SchemaError>,
+    decodeNullableDoc: (doc: NativeDoc<TN> | null) => optionMapEffect(O.fromNullishOr(doc as ConvexDoc | null), decodeDoc),
+    encodeInsertable: S.encodeEffect(sInsertable) as unknown as (v: Insertable) => E.Effect<NativeInsertable<TN>, S.SchemaError>,
+    encodePatchable: S.encodeEffect(sPatchable) as (v: Patchable) => E.Effect<NativePatchable<TN>, S.SchemaError>,
+    encodeReplaceable: S.encodeEffect(sReplaceable) as unknown as (v: Replaceable) => E.Effect<NativeReplaceable<TN>, S.SchemaError>,
     sDoc,
     sFields,
     sRef,
-    _types: null as unknown as { ConvexDoc: ConvexDoc; Doc: Doc },
+    _types: null as unknown as { Insertable: Insertable; Patchable: Patchable; Replaceable: Replaceable },
   };
 
-  type ConvexDoc = S.Schema.Encoded<typeof sDoc>;
-  type Doc = S.Schema.Type<typeof sDoc>;
-  type Insertable = S.Schema.Type<typeof sFields>;
-  type Patchable = Partial<Doc>;
-  type Replaceable = S.Schema.Type<typeof S.Struct<typeof optionalSystemFields & typeof sFields.fields>>;
+  type ConvexDoc = typeof sDoc.Encoded;
+  type Doc = typeof sDoc.Type;
+  type Insertable = typeof sInsertable.Type;
+  type Patchable = typeof sPatchable.Type;
+  type Replaceable = typeof sReplaceable.Type;
 };
 
 export const makeHelpers = () => {
@@ -49,8 +51,8 @@ export const makeHelpers = () => {
 };
 
 // SERVICE ---------------------------------------------------------------------------------------------------------------------------------
-export class Helpers extends Context.Tag("Helpers")<Helpers, ReturnType<typeof makeHelpers>>() {
-  static readonly Live = Layer.sync(this, makeHelpers);
+export class Helpers extends ServiceMap.Service<Helpers, ReturnType<typeof makeHelpers>>()("Helpers") {
+  static readonly layer = Layer.sync(this, makeHelpers);
 }
 
 // TYPES -----------------------------------------------------------------------------------------------------------------------------------

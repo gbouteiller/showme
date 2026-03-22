@@ -11,7 +11,7 @@ export const { sDoc: sChannelDoc, sFields: sChannelFields, sRef: sChannelRef } =
 export const sChannelApiRef = S.Struct({ apiId: S.Number });
 
 // ENTITY ----------------------------------------------------------------------------------------------------------------------------------
-export const sChannel = S.Struct({ ...sChannelDoc.fields, country: S.OptionFromNullOr(sCountry) });
+export const sChannel = sChannelDoc.pipe(S.fieldsAssign({ country: S.OptionFromNullOr(sCountry) }));
 
 // TYPES -----------------------------------------------------------------------------------------------------------------------------------
 export type Channels = {

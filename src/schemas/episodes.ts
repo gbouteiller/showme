@@ -9,7 +9,7 @@ import { sShow } from "./shows";
 export const { sDoc: sEpisodeDoc, sFields: sEpisodeFields, sRef: sEpisodeRef } = makeTableHelpers("episodes");
 
 // ENTITY ----------------------------------------------------------------------------------------------------------------------------------
-export const sEpisode = S.Struct({ ...sEpisodeDoc.fields, show: sShow });
+export const sEpisode = sEpisodeDoc.pipe(S.fieldsAssign({ show: sShow }));
 
 // TYPES -----------------------------------------------------------------------------------------------------------------------------------
 export type Episodes = {

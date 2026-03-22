@@ -30,7 +30,16 @@ export const createMissingCountries = E.fn(function* (creates: Countries["Create
 export const getDistinctCountries = (dtos: Shows["Create"][]): Countries["Create"][] =>
   pipe(
     dtos,
-    Arr.filterMap(({ channel }) => O.andThen(channel, ({ country }) => country)),
+    Arr.flatMap(({ channel }) =>
+      pipe(
+        channel,
+        O.andThen(({ country }) => country),
+        O.match({
+          onNone: () => [],
+          onSome: (country) => [country],
+        })
+      )
+    ),
     Arr.dedupeWith((a, b) => a.code === b.code)
   );
 

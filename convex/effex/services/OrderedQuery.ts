@@ -1,48 +1,44 @@
-import type { ExpressionOrValue, FilterBuilder, OrderedQuery as OrderedQuery_, PaginationOptions, PaginationResult } from "convex/server";
-import { Effect as E, type Option as O } from "effect";
-import type { ParseError } from "effect/ParseResult";
+import type { ExpressionOrValue, FilterBuilder, OrderedQuery as OrderedQuery_, PaginationOptions } from "convex/server";
+import { Effect as E } from "effect";
 import type { DataModel, TableNames } from "@/convex/_generated/dataModel";
 import { DocNotFoundInTable } from "../errors";
 import { makeTableHelpers } from "./Helpers";
 
 // FACTORY ---------------------------------------------------------------------------------------------------------------------------------
 export const makeOrderedQuery = <TN extends TableNames>(query: OrderedQuery_<DataModel[TN]>, table: TN) => {
-  const { _types, decodeDocs, decodeNullableDoc } = makeTableHelpers(table);
+  const { decodeDocs, decodeNullableDoc } = makeTableHelpers(table);
 
-  const collect = E.fn(function* (): E.fn.Return<Doc[], ParseError> {
+  const collect = E.fn(function* () {
     const docs = yield* E.promise(() => query.collect());
-    return yield* decodeDocs(docs as ConvexDoc[]);
+    return yield* decodeDocs(docs);
   });
 
   const filter = (predicate: (q: FilterBuilder<DataModel[TN]>) => ExpressionOrValue<boolean>) =>
     makeOrderedQuery(query.filter(predicate), table);
 
-  const first = E.fn(function* (): E.fn.Return<O.Option<Doc>, ParseError> {
+  const first = E.fn(function* () {
     const doc = yield* E.promise(() => query.first());
-    return yield* decodeNullableDoc(doc as ConvexDoc | null);
+    return yield* decodeNullableDoc(doc);
   });
 
-  const paginate = E.fn(function* (paginationOpts: PaginationOptions): E.fn.Return<PaginationResult<Doc>, ParseError> {
+  const paginate = E.fn(function* (paginationOpts: PaginationOptions) {
     const result = yield* E.promise(() => query.paginate(paginationOpts));
-    const page = yield* decodeDocs(result.page as ConvexDoc[]);
+    const page = yield* decodeDocs(result.page);
     return { ...result, page };
   });
 
-  const take = E.fn(function* (n: number): E.fn.Return<Doc[], ParseError> {
+  const take = E.fn(function* (n: number) {
     const docs = yield* E.promise(() => query.take(n));
-    return yield* decodeDocs(docs as ConvexDoc[]);
+    return yield* decodeDocs(docs);
   });
 
-  const unique = E.fn(function* (): E.fn.Return<O.Option<Doc>, ParseError | DocNotFoundInTable<TN>> {
+  const unique = E.fn(function* () {
     const doc = yield* E.tryPromise({
       try: () => query.unique(),
       catch: () => new DocNotFoundInTable({ table }),
     });
-    return yield* decodeNullableDoc(doc as ConvexDoc | null);
+    return yield* decodeNullableDoc(doc);
   });
 
   return { collect, filter, first, paginate, take, unique };
-
-  type ConvexDoc = typeof _types.ConvexDoc;
-  type Doc = typeof _types.Doc;
 };

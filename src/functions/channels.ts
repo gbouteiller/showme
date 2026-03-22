@@ -45,7 +45,15 @@ export const createMissingChannels = E.fn(function* (creates: Channels["Create"]
 export const getDistinctChannels = (dtos: Shows["Create"][]): Channels["Create"][] =>
   pipe(
     dtos,
-    Arr.filterMap(({ channel }) => channel),
+    Arr.flatMap(({ channel }) =>
+      pipe(
+        channel,
+        O.match({
+          onNone: () => [],
+          onSome: (country) => [country],
+        })
+      )
+    ),
     Arr.dedupeWith((a, b) => a.apiId === b.apiId)
   );
 

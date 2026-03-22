@@ -1,6 +1,5 @@
 import type { Value } from "convex/values";
-import { Array as Arr, Effect as E, Option as O } from "effect";
-import { NoSuchElementException } from "effect/Cause";
+import { Array as Arr, Cause, Effect as E, Option as O } from "effect";
 import type { Simplify } from "effect/Types";
 import { DatabaseReader } from "@/convex/effex/services/DatabaseReader";
 import { DatabaseWriter } from "@/convex/effex/services/DatabaseWriter";
@@ -15,7 +14,7 @@ import { type ReadPaginatedProps, readPaginated } from "./utils";
 export const episodeFromDoc = E.fn(function* (doc: Episodes["Doc"]) {
   const db = yield* DatabaseReader;
   const showDoc = yield* db.get("shows", doc.showId);
-  if (O.isNone(showDoc)) return yield* new NoSuchElementException("missing show doc");
+  if (O.isNone(showDoc)) return yield* new Cause.NoSuchElementError("missing show doc");
   const show = yield* showFromDoc(showDoc.value);
   return { ...doc, show };
 });

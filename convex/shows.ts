@@ -1,9 +1,8 @@
 import { TableAggregate } from "@convex-dev/aggregate";
 import { Migrations } from "@convex-dev/migrations";
-import type { HttpClientError } from "@effect/platform/HttpClientError";
 import { getYear } from "date-fns";
-import { Array as Arr, Effect as E, HashMap as H, Option as O, Schema as S } from "effect";
-import type { ParseError } from "effect/ParseResult";
+import { Array as Arr, Effect as E, HashMap as H, Option as O, Schema as S, Struct } from "effect";
+import type { HttpClientError } from "effect/unstable/http/HttpClientError";
 import { createMissingChannels, getDistinctChannels } from "@/functions/channels";
 import { createMissingCountries, getDistinctCountries } from "@/functions/countries";
 import { readEpisodesByShow } from "@/functions/episodes";
@@ -28,7 +27,7 @@ import { mutation, triggers } from "./triggers";
 
 const SHOW_UPDATE_BATCH_DELAY_MS = 10_000;
 const SHOW_UPDATE_BATCH_SIZE = 100;
-const sShowRefreshPlan = S.Struct({ apiId: S.NonNegativeInt, includeEpisodes: S.Boolean });
+const sShowRefreshPlan = S.Struct({ apiId: S.Int, includeEpisodes: S.Boolean });
 
 // AGGREGATES ------------------------------------------------------------------------------------------------------------------------------
 export const favoriteShows = new TableAggregate<AggregateShowsParams<boolean, string>>(components.favoriteShows, {
@@ -187,7 +186,7 @@ export const readPaginatedFavorites = query(
 
 export const readPaginatedTopRated = query(
   queryHandler({
-    args: sPaginationWith({ preference: S.optional(FIELDS.shows.preference), year: S.optional(S.NonNegativeInt) }),
+    args: sPaginationWith({ preference: S.optional(FIELDS.shows.preference), year: S.optional(S.Int) }),
     returns: sPaginated(sShow),
     handler: ({ preference, year, ...pageArgs }) => {
       if (preference && year)
@@ -201,7 +200,7 @@ export const readPaginatedTopRated = query(
 
 export const readPaginatedTopRatedUnset = query(
   queryHandler({
-    args: sPaginationWith({ year: S.optional(S.NonNegativeInt) }),
+    args: sPaginationWith({ year: S.optional(S.Int) }),
     returns: sPaginated(sShow),
     handler: ({ year, ...pageArgs }) =>
       year !== undefined
@@ -212,7 +211,7 @@ export const readPaginatedTopRatedUnset = query(
 
 export const readPaginatedTrending = query(
   queryHandler({
-    args: sPaginationWith({ preference: S.optional(FIELDS.shows.preference), year: S.optional(S.NonNegativeInt) }),
+    args: sPaginationWith({ preference: S.optional(FIELDS.shows.preference), year: S.optional(S.Int) }),
     returns: sPaginated(sShow),
     handler: ({ preference, year, ...pageArgs }) => {
       if (preference && year)
@@ -226,7 +225,7 @@ export const readPaginatedTrending = query(
 
 export const readPaginatedTrendingUnset = query(
   queryHandler({
-    args: sPaginationWith({ year: S.optional(S.NonNegativeInt) }),
+    args: sPaginationWith({ year: S.optional(S.Int) }),
     returns: sPaginated(sShow),
     handler: ({ year, ...pageArgs }) =>
       year !== undefined
@@ -270,7 +269,7 @@ export const fetchManyMissing = mutation(
   mutationHandler({
     args: S.Struct({}),
     returns: S.Null,
-    handler: E.fn(function* (): E.fn.Return<null, ParseError | DocNotFoundInTable<"fetcher">, MutationCtxDeps> {
+    handler: E.fn(function* (): E.fn.Return<null, S.SchemaError | DocNotFoundInTable<"fetcher">, MutationCtxDeps> {
       const scheduler = yield* Scheduler;
       const page = yield* startFetcher();
       yield* scheduler.runAfter(0, api.shows.fetchManyMissingPerPage, { page });
@@ -281,9 +280,9 @@ export const fetchManyMissing = mutation(
 
 export const setPreference = mutation(
   mutationHandler({
-    args: S.Struct({ ...sShowRef.fields, preference: S.Literal("favorite", "ignored", "unset") }),
+    args: sShow.mapFields(Struct.pick(["_id", "preference"])),
     returns: S.Null,
-    handler: E.fn(function* ({ _id, preference }): E.fn.Return<null, ParseError, MutationCtxDeps> {
+    handler: E.fn(function* ({ _id, preference }): E.fn.Return<null, S.SchemaError, MutationCtxDeps> {
       const { db, scheduler } = yield* MutationCtx;
 
       yield* db.patch("shows", _id, { preference });
@@ -302,9 +301,9 @@ export const setPreference = mutation(
 
 export const setTrackEpisodes = mutation(
   mutationHandler({
-    args: S.Struct({ ...sShowRef.fields, trackEpisodes: S.Boolean }),
+    args: sShow.mapFields(Struct.pick(["_id", "trackEpisodes"])),
     returns: S.Null,
-    handler: E.fn(function* ({ _id, trackEpisodes }): E.fn.Return<null, ParseError, MutationCtxDeps> {
+    handler: E.fn(function* ({ _id, trackEpisodes }): E.fn.Return<null, S.SchemaError, MutationCtxDeps> {
       const { db } = yield* MutationCtx;
       yield* db.patch("shows", _id, { trackEpisodes });
       return null;
@@ -314,7 +313,7 @@ export const setTrackEpisodes = mutation(
 
 export const upsert = mutation(
   mutationHandler({
-    args: S.Struct({ dto: S.Union(sShowWithEpisodesCreate, sShowCreate) }),
+    args: S.Struct({ dto: S.Union([sShowWithEpisodesCreate, sShowCreate]) }),
     returns: sId("shows"),
     handler: ({ dto }) => upsertShow(dto),
   })
@@ -323,9 +322,9 @@ export const upsert = mutation(
 // ACTIONS ---------------------------------------------------------------------------------------------------------------------------------
 export const fetchManyMissingPerPage = action(
   actionHandler({
-    args: S.Struct({ page: S.NonNegativeInt }),
+    args: S.Struct({ page: S.Int }),
     returns: S.Null,
-    handler: ({ page }): E.Effect<null, HttpClientError | ParseError, ActionCtxDeps> =>
+    handler: ({ page }): E.Effect<null, HttpClientError | S.SchemaError, ActionCtxDeps> =>
       E.gen(function* () {
         const { runMutation, scheduler } = yield* ActionCtx;
         const { fetchShows } = yield* TvMaze;
@@ -335,7 +334,7 @@ export const fetchManyMissingPerPage = action(
         yield* runMutation(api.fetcher.update, { created, lastPage: page });
         yield* scheduler.runAfter(0, api.shows.fetchManyMissingPerPage, { page: page + 1 });
         return null;
-      }).pipe(E.provide(TvMaze.Default)),
+      }).pipe(E.provide(TvMaze.layer)),
   })
 );
 
@@ -343,7 +342,7 @@ export const refreshMany = action(
   actionHandler({
     args: S.Struct({ revisions: S.Array(sShowRevision) }),
     returns: S.Null,
-    handler: ({ revisions }): E.Effect<null, HttpClientError | ParseError, ActionCtxDeps> =>
+    handler: ({ revisions }): E.Effect<null, HttpClientError | S.SchemaError, ActionCtxDeps> =>
       E.gen(function* () {
         if (revisions.length === 0) return null;
         const { runMutation, runQuery } = yield* ActionCtx;
@@ -355,7 +354,7 @@ export const refreshMany = action(
           yield* runMutation(api.shows.upsert, { dto });
         }
         return null;
-      }).pipe(E.provide(TvMaze.Default)),
+      }).pipe(E.provide(TvMaze.layer)),
   })
 );
 
@@ -363,7 +362,7 @@ export const refreshAllDaily = action(
   actionHandler({
     args: S.Struct({}),
     returns: S.Null,
-    handler: (): E.Effect<null, HttpClientError | ParseError, ActionCtxDeps> =>
+    handler: (): E.Effect<null, HttpClientError | S.SchemaError, ActionCtxDeps> =>
       E.gen(function* () {
         const { scheduler } = yield* ActionCtx;
         const { fetchDailyShowRevisions } = yield* TvMaze;
@@ -372,7 +371,7 @@ export const refreshAllDaily = action(
         for (const [index, batch] of batches.entries())
           yield* scheduler.runAfter(index * SHOW_UPDATE_BATCH_DELAY_MS, api.shows.refreshMany, { revisions: [...batch] });
         return null;
-      }).pipe(E.provide(TvMaze.Default)),
+      }).pipe(E.provide(TvMaze.layer)),
   })
 );
 

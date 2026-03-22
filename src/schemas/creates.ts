@@ -1,4 +1,4 @@
-import { Schema as S } from "effect";
+import { Schema as S, Struct } from "effect";
 import { sChannelFields } from "./channels";
 import { sCountryDto } from "./dtos";
 import { sEpisodeFields } from "./episodes";
@@ -8,21 +8,16 @@ import { sShowFields } from "./shows";
 export const sCountryCreate = sCountryDto;
 
 // CHANNELS --------------------------------------------------------------------------------------------------------------------------------
-export const sChannelCreate = S.Struct({
-  ...sChannelFields.omit("countryId").fields,
-  country: S.OptionFromNullOr(sCountryCreate),
-});
+export const sChannelCreate = sChannelFields
+  .mapFields(Struct.omit(["countryId"]))
+  .pipe(S.fieldsAssign({ country: S.OptionFromNullOr(sCountryCreate) }));
 
-// EPISODES --------------------------------------------------------------------------------------------------------------------------------
-export const sEpisodeCreate = sEpisodeFields.omit("showId", "preference");
+// EPISODES --------------------------  ------------------------------------------------------------------------------------------------------
+export const sEpisodeCreate = sEpisodeFields.mapFields(Struct.omit(["showId", "preference"]));
 
 // SHOWS -----------------------------------------------------------------------------------------------------------------------------------
-export const sShowCreate = S.Struct({
-  ...sShowFields.omit("channelId", "preference", "trackEpisodes").fields,
-  channel: S.OptionFromNullOr(sChannelCreate),
-});
+export const sShowCreate = sShowFields
+  .mapFields(Struct.omit(["channelId", "preference", "trackEpisodes"]))
+  .pipe(S.fieldsAssign({ channel: S.OptionFromNullOr(sChannelCreate) }));
 
-export const sShowWithEpisodesCreate = S.Struct({
-  ...sShowCreate.fields,
-  episodes: S.Array(sEpisodeCreate),
-});
+export const sShowWithEpisodesCreate = sShowCreate.pipe(S.fieldsAssign({ episodes: S.Array(sEpisodeCreate) }));
