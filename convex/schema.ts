@@ -1,7 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { Schema as S } from "effect";
 import { FIELDS } from "./effex/fields";
-import { tableFrom } from "./effex/schemas/validators";
+import { tableFrom } from "./effex/schemas/table";
 
 // SCHEMA ----------------------------------------------------------------------------------------------------------------------------------
 export default defineSchema({
