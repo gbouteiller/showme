@@ -1,35 +1,70 @@
 import { type GenericValidator, type OptionalProperty, type Validator, v } from "convex/values";
 import { Option as O, type Schema as S, SchemaAST } from "effect";
+import {
+  EmptyEnumValuesError,
+  EmptyFieldNameError,
+  EmptyObjectKeywordError,
+  EmptyRecordKeyMembersError,
+  EmptyUnionMembersError,
+  InvalidFieldNameCharactersError,
+  InvalidRecordKeyError,
+  MixedObjectAndRecordFieldsError,
+  MultipleRecordKeysError,
+  NonStringObjectFieldNameError,
+  OptionalOnlyUndefinedError,
+  OptionalRecordKeyError,
+  OptionalRecordValueError,
+  OptionalValueOutsideObjectFieldError,
+  RecursiveSchemaError,
+  ReservedFieldNameError,
+  UndefinedOutsideOptionalObjectFieldError,
+  UnhandledAstTagError,
+  UnsupportedArrayShapeError,
+  UnsupportedAstTagError,
+} from "./error";
 import { getTableName } from "./genericId";
-
-const convexSchemaError = (path: SchemaPath, message: string): Error =>
-  new Error(`Unsupported Convex schema at ${formatPath(path)}: ${message}`);
-
-const formatPath = (path: SchemaPath): string => (path.length === 0 ? "<root>" : path.join("."));
 
 const pushPath = (path: SchemaPath, segment: string): SchemaPath => [...path, segment];
 
-const asNonEmptyTuple = <T>(values: readonly T[], path: SchemaPath, message: string): readonly [T, ...T[]] => {
-  if (values.length === 0) throw convexSchemaError(path, message);
+type UnsupportedConvexAst = Extract<
+  SchemaAST.AST,
+  { _tag: "Any" | "Unknown" | "Never" | "Void" | "Symbol" | "UniqueSymbol" | "ObjectKeyword" | "TemplateLiteral" | "Declaration" }
+>;
+
+const assertNever = (value: never, path: SchemaPath): never => {
+  throw new UnhandledAstTagError({ path, astTag: JSON.stringify(value) });
+};
+
+const isUnsupportedConvexAst = (ast: SchemaAST.AST): ast is UnsupportedConvexAst =>
+  ast._tag === "Any" ||
+  ast._tag === "Unknown" ||
+  ast._tag === "Never" ||
+  ast._tag === "Void" ||
+  ast._tag === "Symbol" ||
+  ast._tag === "UniqueSymbol" ||
+  ast._tag === "ObjectKeyword" ||
+  ast._tag === "TemplateLiteral" ||
+  ast._tag === "Declaration";
+
+const asNonEmptyTuple = <T>(values: readonly T[], path: SchemaPath): readonly [T, ...T[]] => {
+  if (values.length === 0) throw new EmptyUnionMembersError({ path });
 
   return values as unknown as readonly [T, ...T[]];
 };
 
 const assertConvexFieldName = (name: string, path: SchemaPath): void => {
-  if (name.length === 0) throw convexSchemaError(path, "field names must be non-empty strings");
+  if (name.length === 0) throw new EmptyFieldNameError({ path });
 
-  if (name.startsWith("_") || name.startsWith("$"))
-    throw convexSchemaError(path, `field name ${JSON.stringify(name)} cannot start with "_" or "$"`);
+  if (name.startsWith("_") || name.startsWith("$")) throw new ReservedFieldNameError({ path, name });
 
-  if (!/^[\x20-\x7E]+$/u.test(name))
-    throw convexSchemaError(path, `field name ${JSON.stringify(name)} must use non-control ASCII characters only`);
+  if (!/^[\x20-\x7E]+$/u.test(name)) throw new InvalidFieldNameCharactersError({ path, name });
 };
 
 const normalizeEncodedAst = (ast: SchemaAST.AST, path: SchemaPath, seen: Set<SuspendThunk>): SchemaAST.AST => {
   const encodedAst = SchemaAST.toEncoded(ast);
 
   if (SchemaAST.isSuspend(encodedAst)) {
-    if (seen.has(encodedAst.thunk)) throw convexSchemaError(path, "recursive schemas are not supported by Convex validators");
+    if (seen.has(encodedAst.thunk)) throw new RecursiveSchemaError({ path });
 
     seen.add(encodedAst.thunk);
     const resolved = normalizeEncodedAst(encodedAst.thunk(), path, seen);
@@ -47,20 +82,20 @@ const toRequiredUnionMembers = (
 ): readonly [ConvexRequiredValidator, ...ConvexRequiredValidator[]] => {
   const validators = ast.types.map((member, index) => convexRequiredValidatorFromAst(member, pushPath(path, `|${index}`), seen));
 
-  return asNonEmptyTuple(validators, path, "unions must contain at least one supported member");
+  return asNonEmptyTuple(validators, path);
 };
 
 const convexOptionalValidatorFromAst = (ast: SchemaAST.AST, path: SchemaPath, seen: Set<SuspendThunk>): ConvexOptionalValidator => {
   if (SchemaAST.isUnion(ast)) {
     const members = ast.types.filter((member) => !SchemaAST.isUndefined(member));
 
-    if (members.length === 0) throw convexSchemaError(path, "optional fields cannot encode to only undefined");
+    if (members.length === 0) throw new OptionalOnlyUndefinedError({ path });
 
     if (members.length === 1) return v.optional(convexRequiredValidatorFromAst(members[0], path, seen));
 
     const validators = members.map((member, index) => convexRequiredValidatorFromAst(member, pushPath(path, `|${index}`), seen));
 
-    return v.optional(v.union(...asNonEmptyTuple(validators, path, "optional unions must contain a value member")));
+    return v.optional(v.union(...asNonEmptyTuple(validators, path)));
   }
 
   return v.optional(convexRequiredValidatorFromAst(ast, path, seen));
@@ -73,7 +108,7 @@ const convexRecordKeyValidatorFromAst = (
 ): Validator<string, "required", string> => {
   const encodedAst = normalizeEncodedAst(ast, path, seen);
 
-  if (SchemaAST.isOptional(encodedAst)) throw convexSchemaError(path, "record keys cannot be optional");
+  if (SchemaAST.isOptional(encodedAst)) throw new OptionalRecordKeyError({ path });
 
   if (SchemaAST.isString(encodedAst)) {
     const tableName = getTableName<string>(encodedAst);
@@ -83,29 +118,27 @@ const convexRecordKeyValidatorFromAst = (
   if (SchemaAST.isUnion(encodedAst)) {
     const members = encodedAst.types.map((member, index) => convexRecordKeyValidatorFromAst(member, pushPath(path, `|${index}`), seen));
 
-    if (members.length === 0) throw convexSchemaError(path, "record keys must contain at least one supported member");
+    if (members.length === 0) throw new EmptyRecordKeyMembersError({ path });
 
     if (members.length === 1) return members[0];
 
-    return v.union(...asNonEmptyTuple(members, path, "record key unions must contain at least one member"));
+    return v.union(...asNonEmptyTuple(members, path));
   }
 
-  throw convexSchemaError(path, `record keys must be string-like Convex validators, received ${encodedAst._tag}`);
+  throw new InvalidRecordKeyError({ path, astTag: encodedAst._tag });
 };
 
 const convexObjectValidatorFromAst = (ast: SchemaAST.Objects, path: SchemaPath, seen: Set<SuspendThunk>): ConvexRequiredValidator => {
-  if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0)
-    throw convexSchemaError(path, "empty object keywords are broader than Convex objects and cannot be converted safely");
+  if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) throw new EmptyObjectKeywordError({ path });
 
-  if (ast.propertySignatures.length > 0 && ast.indexSignatures.length > 0)
-    throw convexSchemaError(path, "mixed fixed fields and record fields are not supported by Convex validators");
+  if (ast.propertySignatures.length > 0 && ast.indexSignatures.length > 0) throw new MixedObjectAndRecordFieldsError({ path });
 
   if (ast.indexSignatures.length > 0) {
-    if (ast.indexSignatures.length !== 1) throw convexSchemaError(path, "Convex records support a single record key validator");
+    if (ast.indexSignatures.length !== 1) throw new MultipleRecordKeysError({ path });
 
     const [indexSignature] = ast.indexSignatures;
 
-    if (SchemaAST.isOptional(indexSignature.type)) throw convexSchemaError(path, "record values cannot be optional");
+    if (SchemaAST.isOptional(indexSignature.type)) throw new OptionalRecordValueError({ path });
 
     return v.record(
       convexRecordKeyValidatorFromAst(indexSignature.parameter, pushPath(path, "<key>"), seen),
@@ -116,7 +149,7 @@ const convexObjectValidatorFromAst = (ast: SchemaAST.Objects, path: SchemaPath, 
   const fields: Record<string, ConvexValueValidator> = {};
 
   for (const propertySignature of ast.propertySignatures) {
-    if (typeof propertySignature.name !== "string") throw convexSchemaError(path, "Convex object field names must be strings");
+    if (typeof propertySignature.name !== "string") throw new NonStringObjectFieldNameError({ path });
 
     const fieldPath = pushPath(path, propertySignature.name);
     assertConvexFieldName(propertySignature.name, fieldPath);
@@ -129,16 +162,20 @@ const convexObjectValidatorFromAst = (ast: SchemaAST.Objects, path: SchemaPath, 
 const convexEnumValidatorFromAst = (ast: SchemaAST.Enum, path: SchemaPath): ConvexRequiredValidator => {
   const values = [...new Set(ast.enums.map(([, value]) => value))];
 
-  if (values.length === 0) throw convexSchemaError(path, "enums must contain at least one literal value");
+  if (values.length === 0) throw new EmptyEnumValuesError({ path });
 
   if (values.length === 1) return v.literal(values[0]);
 
   const members = values.map((value) => v.literal(value));
-  return v.union(...asNonEmptyTuple(members, path, "enums must contain at least one literal value"));
+  return v.union(...asNonEmptyTuple(members, path));
 };
 
 const convexRequiredValidatorFromAst = (ast: SchemaAST.AST, path: SchemaPath, seen: Set<SuspendThunk>): ConvexRequiredValidator => {
   const encodedAst = normalizeEncodedAst(ast, path, seen);
+
+  if (isUnsupportedConvexAst(encodedAst)) {
+    throw new UnsupportedAstTagError({ path, astTag: encodedAst._tag });
+  }
 
   switch (encodedAst._tag) {
     case "String": {
@@ -159,7 +196,7 @@ const convexRequiredValidatorFromAst = (ast: SchemaAST.AST, path: SchemaPath, se
       return convexEnumValidatorFromAst(encodedAst, path);
     case "Arrays":
       if (encodedAst.elements.length > 0 || encodedAst.rest.length !== 1) {
-        throw convexSchemaError(path, "Convex arrays must be homogeneous; tuples and rest tuples are unsupported");
+        throw new UnsupportedArrayShapeError({ path });
       }
 
       return v.array(convexRequiredValidatorFromAst(encodedAst.rest[0], pushPath(path, "[]"), seen));
@@ -170,25 +207,11 @@ const convexRequiredValidatorFromAst = (ast: SchemaAST.AST, path: SchemaPath, se
       return members.length === 1 ? members[0] : v.union(...members);
     }
     case "Undefined":
-      throw convexSchemaError(path, "undefined is only supported through optional object fields");
-    case "Any":
-    case "Unknown":
-      throw convexSchemaError(path, `${encodedAst._tag} cannot be converted without losing type safety`);
-    case "Never":
-      throw convexSchemaError(path, "never cannot be represented by a Convex validator");
-    case "Void":
-      throw convexSchemaError(path, "void cannot be stored in Convex documents");
-    case "Symbol":
-    case "UniqueSymbol":
-      throw convexSchemaError(path, "symbols are not supported by Convex");
-    case "ObjectKeyword":
-      throw convexSchemaError(path, "generic object keywords are broader than Convex object validators");
-    case "TemplateLiteral":
-      throw convexSchemaError(path, "template literal constraints cannot be represented by Convex validators");
-    case "Declaration":
-      throw convexSchemaError(path, "custom declarations must encode to supported Convex primitives before conversion");
+      throw new UndefinedOutsideOptionalObjectFieldError({ path });
     case "Suspend":
-      throw convexSchemaError(path, "recursive schemas are not supported by Convex validators");
+      throw new RecursiveSchemaError({ path });
+    default:
+      return assertNever(encodedAst, path);
   }
 };
 
@@ -201,7 +224,7 @@ const convexValidatorFromAst = (
   const encodedAst = normalizeEncodedAst(ast, path, seen);
 
   if (SchemaAST.isOptional(encodedAst)) {
-    if (!allowOptional) throw convexSchemaError(path, "optional values are only supported on object fields");
+    if (!allowOptional) throw new OptionalValueOutsideObjectFieldError({ path });
 
     return convexOptionalValidatorFromAst(encodedAst, path, seen);
   }
@@ -213,7 +236,7 @@ export const convexSchemaFrom = <const Fields extends S.Struct.Fields>(schema: S
   const validators: Record<string, GenericValidator> = {};
 
   for (const key of Reflect.ownKeys(schema.fields)) {
-    if (typeof key !== "string") throw convexSchemaError([], "Convex schema field names must be strings");
+    if (typeof key !== "string") throw new NonStringObjectFieldNameError({ path: [] });
 
     const field = schema.fields[key as keyof Fields];
     const fieldPath = [key];
