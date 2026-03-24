@@ -178,6 +178,40 @@ describe("convexSchemaFrom", () => {
     ).toThrowError(UnhandledAstTagError);
   });
 
+  it("reports the full path for nested reserved field names", () => {
+    try {
+      convexSchemaFrom(
+        S.Struct({
+          outer: S.Struct({
+            _bad: S.String,
+          }),
+        })
+      );
+
+      throw new Error("Expected convexSchemaFrom to throw");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ReservedFieldNameError);
+      expect((error as { readonly path: readonly string[] }).path).toEqual(["outer", "_bad"]);
+    }
+  });
+
+  it("reports the full path for nested invalid field names", () => {
+    try {
+      convexSchemaFrom(
+        S.Struct({
+          outer: S.Struct({
+            "bad\nname": S.String,
+          }),
+        })
+      );
+
+      throw new Error("Expected convexSchemaFrom to throw");
+    } catch (error) {
+      expect(error).toBeInstanceOf(InvalidFieldNameCharactersError);
+      expect((error as { readonly path: readonly string[] }).path).toEqual(["outer", "bad\nname"]);
+    }
+  });
+
   it("rejects reserved Convex field names", () => {
     expect(() =>
       convexSchemaFrom(

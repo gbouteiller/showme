@@ -25,12 +25,13 @@ import { getTableName } from "./genericId";
 
 // CONSTS ----------------------------------------------------------------------------------------------------------------------------------
 const convexFieldNamePattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const emptyPath = [] as const satisfies SchemaPath;
 
 // MAIN ------------------------------------------------------------------------------------------------------------------------------------
 export const convexSchemaFrom = <const Fields extends S.Struct.Fields>(schema: S.Struct<Fields>): ConvexSchemaFromFields<Fields> =>
   pipe(
     Reflect.ownKeys(schema.fields),
-    Arr.map((name) => Tuple.make(normalizeFieldName(name), schema.fields[name].ast)),
+    Arr.map((name) => Tuple.make(normalizeFieldName(name, emptyPath), schema.fields[name].ast)),
     Record.fromEntries,
     Record.map((ast, name) => vFrom({ ast, path: [name], allowOptional: true, seen: HashSet.empty() }))
   ) as ConvexSchemaFromFields<Fields>;
@@ -61,11 +62,14 @@ const normalizeEncodedAst = (ast: SchemaAST.AST, path: SchemaPath, seen: HashSet
   return encodedAst;
 };
 
-const normalizeFieldName = (name: PropertyKey): string => {
-  if (typeof name !== "string") throw new NonStringObjectFieldNameError({ path: [] });
-  if (name.length === 0) throw new EmptyFieldNameError({ path: [name] });
-  if (name.startsWith("_") || name.startsWith("$")) throw new ReservedFieldNameError({ name, path: [name] });
-  if (!convexFieldNamePattern.test(name)) throw new InvalidFieldNameCharactersError({ name, path: [name] });
+const normalizeFieldName = (name: PropertyKey, parentPath: SchemaPath): string => {
+  if (typeof name !== "string") throw new NonStringObjectFieldNameError({ path: parentPath });
+
+  const path = [...parentPath, name];
+
+  if (name.length === 0) throw new EmptyFieldNameError({ path });
+  if (name.startsWith("_") || name.startsWith("$")) throw new ReservedFieldNameError({ name, path });
+  if (!convexFieldNamePattern.test(name)) throw new InvalidFieldNameCharactersError({ name, path });
   return name;
 };
 
@@ -122,7 +126,7 @@ const vObjectOrRecordFrom = (ast: SchemaAST.Objects, path: SchemaPath, seen: Has
   return v.object(
     pipe(
       ast.propertySignatures,
-      Arr.map(({ name, type }) => Tuple.make(normalizeFieldName(name), type)),
+      Arr.map(({ name, type }) => Tuple.make(normalizeFieldName(name, path), type)),
       Record.fromEntries,
       Record.map((ast, name) => vFrom({ ast, path: [...path, name], allowOptional: true, seen }))
     )
