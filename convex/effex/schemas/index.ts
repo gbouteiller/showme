@@ -1,5 +1,5 @@
-import { type GenericValidator, type OptionalProperty, type Validator, v } from "convex/values";
-import { Option as O, type Schema as S, SchemaAST } from "effect";
+import { type OptionalProperty, type Validator, v } from "convex/values";
+import { Array as Arr, Option as O, pipe, Record, type Schema as S, SchemaAST, Tuple } from "effect";
 import {
   EmptyEnumValuesError,
   EmptyFieldNameError,
@@ -20,119 +20,83 @@ import {
   UndefinedOutsideOptionalObjectFieldError,
   UnhandledAstTagError,
   UnsupportedArrayShapeError,
-  UnsupportedAstTagError,
-} from "./error";
+} from "./errors";
 import { getTableName } from "./genericId";
 
-const pushPath = (path: SchemaPath, segment: string): SchemaPath => [...path, segment];
+// CONSTS ----------------------------------------------------------------------------------------------------------------------------------
+const convexFieldNamePattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
-type UnsupportedConvexAst = Extract<
-  SchemaAST.AST,
-  { _tag: "Any" | "Unknown" | "Never" | "Void" | "Symbol" | "UniqueSymbol" | "ObjectKeyword" | "TemplateLiteral" | "Declaration" }
->;
+// MAIN ------------------------------------------------------------------------------------------------------------------------------------
+export const convexSchemaFrom = <const Fields extends S.Struct.Fields>(schema: S.Struct<Fields>): ConvexSchemaFromFields<Fields> =>
+  pipe(
+    Reflect.ownKeys(schema.fields),
+    Arr.map((name) => Tuple.make(assertFieldName(name), schema.fields[name].ast)),
+    Record.fromEntries,
+    Record.map((ast, name) => vFrom({ ast, path: [name], allowOptional: true, seen: new Set() }))
+  ) as ConvexSchemaFromFields<Fields>;
 
-const assertNever = (value: never, path: SchemaPath): never => {
-  throw new UnhandledAstTagError({ path, astTag: JSON.stringify(value) });
+// ASSERTIONS ------------------------------------------------------------------------------------------------------------------------------
+const assertFieldName = (name: PropertyKey): string => {
+  if (typeof name !== "string") throw new NonStringObjectFieldNameError({ path: [] });
+  if (name.length === 0) throw new EmptyFieldNameError({ path: [name] });
+  if (name.startsWith("_") || name.startsWith("$")) throw new ReservedFieldNameError({ name, path: [name] });
+  if (!convexFieldNamePattern.test(name)) throw new InvalidFieldNameCharactersError({ name, path: [name] });
+  return name;
 };
 
-const isUnsupportedConvexAst = (ast: SchemaAST.AST): ast is UnsupportedConvexAst =>
-  ast._tag === "Any" ||
-  ast._tag === "Unknown" ||
-  ast._tag === "Never" ||
-  ast._tag === "Void" ||
-  ast._tag === "Symbol" ||
-  ast._tag === "UniqueSymbol" ||
-  ast._tag === "ObjectKeyword" ||
-  ast._tag === "TemplateLiteral" ||
-  ast._tag === "Declaration";
+const assertNonRecursiveAst = (ast: SchemaAST.AST, path: SchemaPath, seen: Set<SuspendThunk>): void => {
+  switch (ast._tag) {
+    case "Suspend":
+      if (seen.has(ast.thunk)) throw new RecursiveSchemaError({ path });
+      assertNonRecursiveAst(ast.thunk(), path, withSeen(seen, ast.thunk));
+      return;
+    case "Arrays":
+      for (const element of ast.elements) assertNonRecursiveAst(element, pushPath(path, "[]"), seen);
+      for (const rest of ast.rest) assertNonRecursiveAst(rest, pushPath(path, "[]"), seen);
+      return;
+    case "Objects":
+      for (const propertySignature of ast.propertySignatures)
+        assertNonRecursiveAst(propertySignature.type, pushPath(path, String(propertySignature.name)), seen);
 
-const asNonEmptyTuple = <T>(values: readonly T[], path: SchemaPath): readonly [T, ...T[]] => {
-  if (values.length === 0) throw new EmptyUnionMembersError({ path });
+      for (const indexSignature of ast.indexSignatures) {
+        assertNonRecursiveAst(indexSignature.parameter, pushPath(path, "<key>"), seen);
+        assertNonRecursiveAst(indexSignature.type, pushPath(path, "<value>"), seen);
+      }
 
-  return values as unknown as readonly [T, ...T[]];
-};
+      return;
+    case "Union":
+      for (const [index, member] of ast.types.entries()) assertNonRecursiveAst(member, pushPath(path, `|${index}`), seen);
+      return;
+    case "Declaration":
+      for (const [index, typeParameter] of ast.typeParameters.entries())
+        assertNonRecursiveAst(typeParameter, pushPath(path, `<type:${index}>`), seen);
 
-const assertConvexFieldName = (name: string, path: SchemaPath): void => {
-  if (name.length === 0) throw new EmptyFieldNameError({ path });
-
-  if (name.startsWith("_") || name.startsWith("$")) throw new ReservedFieldNameError({ path, name });
-
-  if (!/^[\x20-\x7E]+$/u.test(name)) throw new InvalidFieldNameCharactersError({ path, name });
-};
-
-const normalizeEncodedAst = (ast: SchemaAST.AST, path: SchemaPath, seen: Set<SuspendThunk>): SchemaAST.AST => {
-  const encodedAst = SchemaAST.toEncoded(ast);
-
-  if (SchemaAST.isSuspend(encodedAst)) {
-    if (seen.has(encodedAst.thunk)) throw new RecursiveSchemaError({ path });
-
-    seen.add(encodedAst.thunk);
-    const resolved = normalizeEncodedAst(encodedAst.thunk(), path, seen);
-    seen.delete(encodedAst.thunk);
-    return resolved;
+      return;
+    default:
+      return;
   }
-
-  return encodedAst;
 };
 
-const toRequiredUnionMembers = (
-  ast: SchemaAST.Union,
-  path: SchemaPath,
-  seen: Set<SuspendThunk>
-): readonly [ConvexRequiredValidator, ...ConvexRequiredValidator[]] => {
-  const validators = ast.types.map((member, index) => convexRequiredValidatorFromAst(member, pushPath(path, `|${index}`), seen));
-
-  return asNonEmptyTuple(validators, path);
-};
-
-const convexOptionalValidatorFromAst = (ast: SchemaAST.AST, path: SchemaPath, seen: Set<SuspendThunk>): ConvexOptionalValidator => {
-  if (SchemaAST.isUnion(ast)) {
-    const members = ast.types.filter((member) => !SchemaAST.isUndefined(member));
-
-    if (members.length === 0) throw new OptionalOnlyUndefinedError({ path });
-
-    if (members.length === 1) return v.optional(convexRequiredValidatorFromAst(members[0], path, seen));
-
-    const validators = members.map((member, index) => convexRequiredValidatorFromAst(member, pushPath(path, `|${index}`), seen));
-
-    return v.optional(v.union(...asNonEmptyTuple(validators, path)));
-  }
-
-  return v.optional(convexRequiredValidatorFromAst(ast, path, seen));
-};
-
-const convexRecordKeyValidatorFromAst = (
-  ast: SchemaAST.AST,
-  path: SchemaPath,
-  seen: Set<SuspendThunk>
-): Validator<string, "required", string> => {
+// VALIDATORS ------------------------------------------------------------------------------------------------------------------------------
+const vFrom = ({ ast, path, allowOptional, seen }: ConvexValidatorFromAstArgs): ConvexValueValidator => {
   const encodedAst = normalizeEncodedAst(ast, path, seen);
+  if (!SchemaAST.isOptional(encodedAst)) return vRequiredFrom(encodedAst, path, seen);
+  if (!allowOptional) throw new OptionalValueOutsideObjectFieldError({ path });
+  return vOptionalFrom(encodedAst, path, seen);
+};
+type ConvexValidatorFromAstArgs = { ast: SchemaAST.AST; path: SchemaPath; allowOptional: boolean; seen: Set<SuspendThunk> };
 
-  if (SchemaAST.isOptional(encodedAst)) throw new OptionalRecordKeyError({ path });
-
-  if (SchemaAST.isString(encodedAst)) {
-    const tableName = getTableName<string>(encodedAst);
-    return O.isSome(tableName) ? v.id(tableName.value) : v.string();
-  }
-
-  if (SchemaAST.isUnion(encodedAst)) {
-    const members = encodedAst.types.map((member, index) => convexRecordKeyValidatorFromAst(member, pushPath(path, `|${index}`), seen));
-
-    if (members.length === 0) throw new EmptyRecordKeyMembersError({ path });
-
-    if (members.length === 1) return members[0];
-
-    return v.union(...asNonEmptyTuple(members, path));
-  }
-
-  throw new InvalidRecordKeyError({ path, astTag: encodedAst._tag });
+const vEnumFrom = (ast: SchemaAST.Enum, path: SchemaPath): VRequired => {
+  const values = [...new Set(ast.enums.map(([, value]) => value))];
+  if (values.length === 0) throw new EmptyEnumValuesError({ path });
+  if (values.length === 1) return v.literal(values[0]);
+  const members = values.map((value) => v.literal(value));
+  return v.union(...asNonEmptyTuple(members, path));
 };
 
-const convexObjectValidatorFromAst = (ast: SchemaAST.Objects, path: SchemaPath, seen: Set<SuspendThunk>): ConvexRequiredValidator => {
+const vObjectOrRecordFrom = (ast: SchemaAST.Objects, path: SchemaPath, seen: Set<SuspendThunk>): VRequired => {
   if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) throw new EmptyObjectKeywordError({ path });
-
   if (ast.propertySignatures.length > 0 && ast.indexSignatures.length > 0) throw new MixedObjectAndRecordFieldsError({ path });
-
   if (ast.indexSignatures.length > 0) {
     if (ast.indexSignatures.length !== 1) throw new MultipleRecordKeysError({ path });
 
@@ -141,111 +105,127 @@ const convexObjectValidatorFromAst = (ast: SchemaAST.Objects, path: SchemaPath, 
     if (SchemaAST.isOptional(indexSignature.type)) throw new OptionalRecordValueError({ path });
 
     return v.record(
-      convexRecordKeyValidatorFromAst(indexSignature.parameter, pushPath(path, "<key>"), seen),
-      convexRequiredValidatorFromAst(indexSignature.type, pushPath(path, "<value>"), seen)
+      vRecordKeyFrom(indexSignature.parameter, pushPath(path, "<key>"), seen),
+      vRequiredFrom(indexSignature.type, pushPath(path, "<value>"), seen)
     );
   }
 
-  const fields: Record<string, ConvexValueValidator> = {};
+  return v.object(
+    pipe(
+      ast.propertySignatures,
+      Arr.map(({ name, type }) => Tuple.make(assertFieldName(name), type)),
+      Record.fromEntries,
+      Record.map((ast, name) => vFrom({ ast, path: [...path, name], allowOptional: true, seen }))
+    )
+  );
+};
 
-  for (const propertySignature of ast.propertySignatures) {
-    if (typeof propertySignature.name !== "string") throw new NonStringObjectFieldNameError({ path });
+const vOptionalFrom = (ast: SchemaAST.AST, path: SchemaPath, seen: Set<SuspendThunk>): VOptional => {
+  if (SchemaAST.isUnion(ast)) {
+    const members = Arr.filter(ast.types, (member) => !SchemaAST.isUndefined(member));
 
-    const fieldPath = pushPath(path, propertySignature.name);
-    assertConvexFieldName(propertySignature.name, fieldPath);
-    fields[propertySignature.name] = convexValidatorFromAst(propertySignature.type, fieldPath, true, seen);
+    if (members.length === 0) throw new OptionalOnlyUndefinedError({ path });
+    if (members.length === 1) return v.optional(vRequiredFrom(members[0], path, seen));
+
+    const validators = pipe(
+      members,
+      Arr.map((member, index) => vRequiredFrom(member, pushPath(path, `|${index}`), seen))
+    );
+
+    return v.optional(unionFromMembers(asNonEmptyTuple(validators, path)));
   }
 
-  return v.object(fields);
+  return v.optional(vRequiredFrom(ast, path, seen));
 };
 
-const convexEnumValidatorFromAst = (ast: SchemaAST.Enum, path: SchemaPath): ConvexRequiredValidator => {
-  const values = [...new Set(ast.enums.map(([, value]) => value))];
-
-  if (values.length === 0) throw new EmptyEnumValuesError({ path });
-
-  if (values.length === 1) return v.literal(values[0]);
-
-  const members = values.map((value) => v.literal(value));
-  return v.union(...asNonEmptyTuple(members, path));
-};
-
-const convexRequiredValidatorFromAst = (ast: SchemaAST.AST, path: SchemaPath, seen: Set<SuspendThunk>): ConvexRequiredValidator => {
+const vRecordKeyFrom = (ast: SchemaAST.AST, path: SchemaPath, seen: Set<SuspendThunk>): Validator<string, "required", string> => {
   const encodedAst = normalizeEncodedAst(ast, path, seen);
 
-  if (isUnsupportedConvexAst(encodedAst)) {
-    throw new UnsupportedAstTagError({ path, astTag: encodedAst._tag });
+  if (SchemaAST.isOptional(encodedAst)) throw new OptionalRecordKeyError({ path });
+  if (SchemaAST.isString(encodedAst)) return vStringFrom(encodedAst);
+
+  if (SchemaAST.isUnion(encodedAst)) {
+    const members = pipe(
+      encodedAst.types,
+      Arr.map((member, index) => vRecordKeyFrom(member, pushPath(path, `|${index}`), seen))
+    );
+
+    if (members.length === 0) throw new EmptyRecordKeyMembersError({ path });
+    if (members.length === 1) return members[0];
+    return v.union(...asNonEmptyTuple(members, path));
   }
 
-  switch (encodedAst._tag) {
-    case "String": {
-      const tableName = getTableName<string>(encodedAst);
-      return O.isSome(tableName) ? v.id(tableName.value) : v.string();
-    }
-    case "Number":
-      return v.number();
-    case "BigInt":
-      return v.int64();
-    case "Boolean":
-      return v.boolean();
-    case "Null":
-      return v.null();
-    case "Literal":
-      return v.literal(encodedAst.literal);
-    case "Enum":
-      return convexEnumValidatorFromAst(encodedAst, path);
-    case "Arrays":
-      if (encodedAst.elements.length > 0 || encodedAst.rest.length !== 1) {
-        throw new UnsupportedArrayShapeError({ path });
-      }
-
-      return v.array(convexRequiredValidatorFromAst(encodedAst.rest[0], pushPath(path, "[]"), seen));
-    case "Objects":
-      return convexObjectValidatorFromAst(encodedAst, path, seen);
-    case "Union": {
-      const members = toRequiredUnionMembers(encodedAst, path, seen);
-      return members.length === 1 ? members[0] : v.union(...members);
-    }
-    case "Undefined":
-      throw new UndefinedOutsideOptionalObjectFieldError({ path });
-    case "Suspend":
-      throw new RecursiveSchemaError({ path });
-    default:
-      return assertNever(encodedAst, path);
-  }
+  throw new InvalidRecordKeyError({ path, astTag: encodedAst._tag });
 };
 
-const convexValidatorFromAst = (
-  ast: SchemaAST.AST,
-  path: SchemaPath,
-  allowOptional: boolean,
-  seen: Set<SuspendThunk>
-): ConvexValueValidator => {
+const vRequiredFrom = (ast: SchemaAST.AST, path: SchemaPath, seen: Set<SuspendThunk>): VRequired => {
   const encodedAst = normalizeEncodedAst(ast, path, seen);
 
-  if (SchemaAST.isOptional(encodedAst)) {
-    if (!allowOptional) throw new OptionalValueOutsideObjectFieldError({ path });
-
-    return convexOptionalValidatorFromAst(encodedAst, path, seen);
+  if (encodedAst._tag === "String") return vStringFrom(encodedAst);
+  if (encodedAst._tag === "Number") return v.number();
+  if (encodedAst._tag === "BigInt") return v.int64();
+  if (encodedAst._tag === "Boolean") return v.boolean();
+  if (encodedAst._tag === "Null") return v.null();
+  if (encodedAst._tag === "Literal") return v.literal(encodedAst.literal);
+  if (encodedAst._tag === "Enum") return vEnumFrom(encodedAst, path);
+  if (encodedAst._tag === "Arrays") {
+    if (encodedAst.elements.length > 0 || encodedAst.rest.length !== 1) throw new UnsupportedArrayShapeError({ path });
+    return v.array(vRequiredFrom(encodedAst.rest[0], pushPath(path, "[]"), seen));
   }
-
-  return convexRequiredValidatorFromAst(encodedAst, path, seen);
+  if (encodedAst._tag === "Objects") return vObjectOrRecordFrom(encodedAst, path, seen);
+  if (encodedAst._tag === "Union") {
+    const members = pipe(
+      encodedAst.types,
+      Arr.map((member, index) => vRequiredFrom(member, pushPath(path, `|${index}`), seen)),
+      (validators) => asNonEmptyTuple(validators, path)
+    );
+    return unionFromMembers(members);
+  }
+  if (encodedAst._tag === "Undefined") throw new UndefinedOutsideOptionalObjectFieldError({ path });
+  if (encodedAst._tag === "Suspend") throw new RecursiveSchemaError({ path });
+  throw new UnhandledAstTagError({ path, astTag: encodedAst._tag });
 };
 
-export const convexSchemaFrom = <const Fields extends S.Struct.Fields>(schema: S.Struct<Fields>): ConvexSchemaFromFields<Fields> => {
-  const validators: Record<string, GenericValidator> = {};
+const vStringFrom = (ast: SchemaAST.String): Validator<string, "required", string> =>
+  getTableName(ast).pipe(O.map(v.id), O.getOrElse(v.string));
 
-  for (const key of Reflect.ownKeys(schema.fields)) {
-    if (typeof key !== "string") throw new NonStringObjectFieldNameError({ path: [] });
+// NORMALIZERS -----------------------------------------------------------------------------------------------------------------------------
+const normalizeEncodedAst = (ast: SchemaAST.AST, path: SchemaPath, seen: Set<SuspendThunk>): SchemaAST.AST => {
+  assertNonRecursiveAst(ast, path, seen);
 
-    const field = schema.fields[key as keyof Fields];
-    const fieldPath = [key];
-
-    assertConvexFieldName(key, fieldPath);
-    validators[key] = convexValidatorFromAst(field.ast, fieldPath, true, new Set());
+  if (SchemaAST.isSuspend(ast)) {
+    if (seen.has(ast.thunk)) throw new RecursiveSchemaError({ path });
+    return normalizeEncodedAst(ast.thunk(), path, withSeen(seen, ast.thunk));
   }
 
-  return validators as ConvexSchemaFromFields<Fields>;
+  let encodedAst: SchemaAST.AST;
+
+  try {
+    encodedAst = SchemaAST.toEncoded(ast);
+  } catch (error) {
+    if (error instanceof RangeError) throw new RecursiveSchemaError({ path });
+    throw error;
+  }
+
+  if (SchemaAST.isSuspend(encodedAst)) {
+    if (seen.has(encodedAst.thunk)) throw new RecursiveSchemaError({ path });
+    return normalizeEncodedAst(encodedAst.thunk(), path, withSeen(seen, encodedAst.thunk));
+  }
+
+  return encodedAst;
+};
+
+// HELPERS ---------------------------------------------------------------------------------------------------------------------------------
+const pushPath = (path: SchemaPath, segment: string): SchemaPath => [...path, segment];
+const withSeen = (seen: ReadonlySet<SuspendThunk>, thunk: SuspendThunk): Set<SuspendThunk> => new Set(seen).add(thunk);
+
+const unionFromMembers = (members: readonly [VRequired, ...VRequired[]]): VRequired =>
+  members.length === 1 ? members[0] : v.union(...members);
+
+const asNonEmptyTuple = <T>(values: readonly T[], path: SchemaPath): readonly [T, ...T[]] => {
+  if (values.length === 0) throw new EmptyUnionMembersError({ path });
+
+  return values as unknown as readonly [T, ...T[]];
 };
 
 // TYPES -----------------------------------------------------------------------------------------------------------------------------------
@@ -268,8 +248,8 @@ export type ConvexSchemaFromFields<Fields extends S.Struct.Fields> = {
   [K in keyof Fields]: ConvexFieldValidatorFromSchema<Fields[K]>;
 };
 
-type ConvexRequiredValidator = Validator<unknown, "required", string>;
-type ConvexOptionalValidator = Validator<unknown, "optional", string>;
+type VRequired = Validator<unknown, "required", string>;
+type VOptional = Validator<unknown, "optional", string>;
 type ConvexValueValidator = Validator<unknown, OptionalProperty, string>;
 type SuspendThunk = SchemaAST.Suspend["thunk"];
 type SchemaPath = readonly string[];

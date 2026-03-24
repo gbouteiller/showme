@@ -12,7 +12,7 @@ import type * as crons from "../crons.js";
 import type * as effex_errors from "../effex/errors.js";
 import type * as effex_fields from "../effex/fields.js";
 import type * as effex_index from "../effex/index.js";
-import type * as effex_schemas_error from "../effex/schemas/error.js";
+import type * as effex_schemas_errors from "../effex/schemas/errors.js";
 import type * as effex_schemas_genericId from "../effex/schemas/genericId.js";
 import type * as effex_schemas_index from "../effex/schemas/index.js";
 import type * as effex_services_ActionCtx from "../effex/services/ActionCtx.js";
@@ -46,7 +46,7 @@ declare const fullApi: ApiFromModules<{
   "effex/errors": typeof effex_errors;
   "effex/fields": typeof effex_fields;
   "effex/index": typeof effex_index;
-  "effex/schemas/error": typeof effex_schemas_error;
+  "effex/schemas/errors": typeof effex_schemas_errors;
   "effex/schemas/genericId": typeof effex_schemas_genericId;
   "effex/schemas/index": typeof effex_schemas_index;
   "effex/services/ActionCtx": typeof effex_services_ActionCtx;
