@@ -15,13 +15,13 @@ export const readFetcherOrThrow = () => readFetcher().pipe(E.map(O.getOrThrow));
 export const startFetcher = E.fn(function* () {
   const db = yield* DatabaseWriter;
   const fetcher = yield* readFetcher();
-  const args = { created: 0, isPending: true, lastUpdated: Date.now() };
+  const args = { count: 0, isDone: false, isPending: true };
   if (O.isNone(fetcher)) {
-    yield* db.insert("fetcher", { ...args, lastPage: 0 });
+    yield* db.insert("fetcher", { ...args, page: 0 });
     return 0;
   }
   yield* db.patch("fetcher", fetcher.value._id, args);
-  return fetcher.value.lastPage;
+  return fetcher.value.page;
 });
 
 export const updateFetcher = E.fn(function* (args: (fetcher: Fetchers["Doc"]) => Partial<Fetchers["Fields"]>) {

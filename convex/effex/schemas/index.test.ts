@@ -1,5 +1,5 @@
 import type { OptionalProperty, Validator } from "convex/values";
-import { Schema as S } from "effect";
+import { Cause, Effect as E, Exit, Result, Schema as S } from "effect";
 import { describe, expect, it } from "vitest";
 import {
   InvalidFieldNameCharactersError,
@@ -12,13 +12,16 @@ import {
   UnsupportedArrayShapeError,
 } from "./errors";
 import { sId } from "./genericId";
-import { convexSchemaFrom } from "./index";
+import { ConvexSchemaConverter, convexSchemaFrom, convexSchemaFromEffect } from "./index";
 
 const validatorJson = (validator: Validator<unknown, OptionalProperty, string>) =>
   (validator as unknown as { readonly json: Record<string, unknown> }).json;
 
 const schemaJson = (schema: Record<string, Validator<unknown, OptionalProperty, string>>) =>
   Object.fromEntries(Object.entries(schema).map(([key, validator]) => [key, validatorJson(validator)]));
+
+const runConvexSchemaFromEffect = <const Fields extends S.Struct.Fields>(schema: S.Struct<Fields>) =>
+  E.runSync(convexSchemaFromEffect(schema).pipe(E.provide(ConvexSchemaConverter.layer)));
 
 describe("convexSchemaFrom", () => {
   it("converts supported encoded Effect schema shapes into Convex validators", () => {
@@ -102,6 +105,34 @@ describe("convexSchemaFrom", () => {
     });
   });
 
+  it("converts supported encoded shapes through the effect API", () => {
+    const schema = S.Struct({
+      idValue: sId("shows"),
+      nestedValue: S.Struct({
+        child: S.Boolean,
+        maybeChild: S.optional(S.Number),
+      }),
+      stringValue: S.String,
+    });
+
+    expect(schemaJson(runConvexSchemaFromEffect(schema))).toEqual(schemaJson(convexSchemaFrom(schema)));
+  });
+
+  it("exposes conversion through the ConvexSchemaConverter service", () => {
+    const schema = S.Struct({ value: S.String });
+
+    const result = E.runSync(
+      E.gen(function* () {
+        const converter = yield* ConvexSchemaConverter;
+        return yield* converter.fromSchema(schema);
+      }).pipe(E.provide(ConvexSchemaConverter.layer))
+    );
+
+    expect(schemaJson(result)).toEqual({
+      value: { type: "string" },
+    });
+  });
+
   it("rejects tuple-like array schemas", () => {
     expect(() =>
       convexSchemaFrom(
@@ -176,6 +207,27 @@ describe("convexSchemaFrom", () => {
         })
       )
     ).toThrowError(UnhandledAstTagError);
+  });
+
+  it("fails in the effect error channel for unsupported encoded AST tags", () => {
+    const exit = E.runSyncExit(
+      convexSchemaFromEffect(
+        S.Struct({
+          templateValue: S.TemplateLiteral(["show-", S.String]),
+        })
+      ).pipe(E.provide(ConvexSchemaConverter.layer))
+    );
+
+    expect(Exit.isFailure(exit)).toBe(true);
+
+    if (!Exit.isFailure(exit)) return;
+
+    const failure = Cause.findFail(exit.cause);
+    expect(Result.isSuccess(failure)).toBe(true);
+
+    if (!Result.isSuccess(failure)) return;
+
+    expect(failure.success.error).toBeInstanceOf(UnhandledAstTagError);
   });
 
   it("reports the full path for nested reserved field names", () => {

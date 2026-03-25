@@ -39,7 +39,7 @@ type Season = {
 };
 
 export function SeasonsList({ apiId, showId, trackEpisodes }: SeasonsListProps) {
-  const { data: episodes, isLoading } = useQuery(convexQuery(api.episodes.readByShow, { _id: showId }));
+  const { data: episodes, isLoading } = useQuery(convexQuery(api.episodes.readByShow, { showId }));
   const { mutate: setWatched } = useMutation({
     mutationFn: useConvexMutation(api.episodes.setWatched),
   });

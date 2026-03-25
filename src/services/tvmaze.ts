@@ -2,6 +2,7 @@ import { Effect as E, flow, Layer, Schema as S, ServiceMap } from "effect";
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http";
 import { filterValidEpisodes } from "@/functions/episodes";
 import { sEpisodeDto, sShowDto, sShowRevisionDtos, sShowWithEpisodesDto } from "@/schemas/dtos";
+import type { Shows } from "@/schemas/shows";
 
 export class TvMaze extends ServiceMap.Service<TvMaze>()("TvMaze", {
   make: E.gen(function* () {
@@ -10,8 +11,8 @@ export class TvMaze extends ServiceMap.Service<TvMaze>()("TvMaze", {
       HttpClient.mapRequest(flow(HttpClientRequest.prependUrl("https://api.tvmaze.com"), HttpClientRequest.acceptJson))
     );
 
-    const fetchDailyShowRevisions = E.fn(function* () {
-      const { json } = yield* client.get("/updates/shows?since=day");
+    const fetchShowRevisions = E.fn(function* (period?: Shows["RevisionPeriod"]) {
+      const { json } = yield* client.get(`/updates/shows${period ? `?since=${period}` : ""}`);
       return yield* S.decodeUnknownEffect(sShowRevisionDtos)(yield* json);
     });
 
@@ -26,7 +27,7 @@ export class TvMaze extends ServiceMap.Service<TvMaze>()("TvMaze", {
       return { ...show, episodes: filterValidEpisodes(show.episodes) };
     });
 
-    const fetchShows = E.fn(function* (page = 1) {
+    const fetchShowsByPage = E.fn(function* (page: number) {
       const { json } = yield* client.get(`/shows?page=${page}`);
       return yield* S.decodeUnknownEffect(S.mutable(S.Array(sShowDto)))(yield* json);
     });
@@ -37,7 +38,7 @@ export class TvMaze extends ServiceMap.Service<TvMaze>()("TvMaze", {
       return filterValidEpisodes(episodes);
     });
 
-    return { fetchDailyShowRevisions, fetchShow, fetchShowWithEpisodes, fetchShows, fetchShowEpisodes };
+    return { fetchShowRevisions, fetchShow, fetchShowWithEpisodes, fetchShowsByPage, fetchShowEpisodes };
   }),
 }) {
   static readonly layer = Layer.effect(this, this.make).pipe(Layer.provide(FetchHttpClient.layer));

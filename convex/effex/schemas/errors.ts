@@ -120,6 +120,27 @@ export class UnsupportedArrayShapeError extends Data.TaggedError("UnsupportedArr
 }
 
 // TYPES -----------------------------------------------------------------------------------------------------------------------------------
+export type ConvexSchemaError =
+  | EmptyEnumValuesError
+  | EmptyFieldNameError
+  | EmptyObjectKeywordError
+  | EmptyRecordKeyMembersError
+  | EmptyUnionMembersError
+  | InvalidFieldNameCharactersError
+  | InvalidRecordKeyError
+  | MixedObjectAndRecordFieldsError
+  | MultipleRecordKeysError
+  | NonStringObjectFieldNameError
+  | OptionalOnlyUndefinedError
+  | OptionalRecordKeyError
+  | OptionalRecordValueError
+  | OptionalValueOutsideObjectFieldError
+  | RecursiveSchemaError
+  | ReservedFieldNameError
+  | UndefinedOutsideOptionalObjectFieldError
+  | UnhandledAstTagError
+  | UnsupportedArrayShapeError;
+
 type WithPath = { readonly path: readonly string[] };
 type WithPathAndAstTag = WithPath & { readonly astTag: string };
 type WithPathAndName = WithPath & { readonly name: string };

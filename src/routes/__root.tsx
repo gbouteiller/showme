@@ -1,6 +1,12 @@
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/adapted/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/adapted/dialog";
 import { Toaster } from "@/components/adapted/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { api } from "@/convex/_generated/api";
 import { ThemeProvider } from "@/lib/theme";
 import appCss from "../styles.css?url";
 import Header from "./-header";
@@ -26,11 +32,46 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <TooltipProvider>
             <Header />
             <div className="container mx-auto py-8">{children}</div>
+            <FirstLauncher />
             <Toaster richColors />
           </TooltipProvider>
         </ThemeProvider>
         <Scripts />
       </body>
     </html>
+  );
+}
+
+// FIRST LAUNCHER --------------------------------------------------------------------------------------------------------------------------
+function FirstLauncher() {
+  const [open, setOpen] = useState(false);
+
+  const { mutate: fetchManyMissing } = useMutation({ mutationFn: useConvexMutation(api.shows.fetchManyMissing) });
+  const { data } = useQuery(convexQuery(api.fetcher.read));
+
+  const handleFetch = () => {
+    fetchManyMissing({});
+    setOpen(false);
+  };
+
+  useEffect(() => {
+    if (data === null) setOpen(true);
+  }, [data]);
+
+  return (
+    <Dialog onOpenChange={setOpen} open={open}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>FIRST LAUNCH</DialogTitle>
+          <DialogDescription>Let's fetch your first shows</DialogDescription>
+        </DialogHeader>
+        The process can be quite long, so please keep the app open until the progress bar disappears.
+        <DialogFooter>
+          <Button className="cursor-pointer" onClick={handleFetch}>
+            FETCH NOW!
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

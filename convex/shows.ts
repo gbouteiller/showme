@@ -3,11 +3,11 @@ import { Migrations } from "@convex-dev/migrations";
 import { getYear } from "date-fns";
 import { Array as Arr, Effect as E, HashMap as H, Option as O, Schema as S, Struct } from "effect";
 import type { HttpClientError } from "effect/unstable/http/HttpClientError";
-import { createMissingChannels, getDistinctChannels } from "@/functions/channels";
-import { createMissingCountries, getDistinctCountries } from "@/functions/countries";
+import { getDistinctChannelsFromShows, getOrCreateChannels } from "@/functions/channels";
+import { getDistinctCountriesFromShows, getOrCreateCountries } from "@/functions/countries";
 import { readEpisodesByShow } from "@/functions/episodes";
 import { startFetcher } from "@/functions/fetcher";
-import { createShows, readMaxApiIdShow, readPaginatedShows, readShowByApiId, showFromDoc, upsertShow } from "@/functions/shows";
+import { getOrCreateShows, readMaxApiIdShow, readPaginatedShows, readShowByApiId, showFromDoc, upsertShow } from "@/functions/shows";
 import { sShowCreate, sShowWithEpisodesCreate } from "@/schemas/creates";
 import { sShow, sShowRef, sShowRevision } from "@/schemas/shows";
 import { TvMaze } from "@/services/tvmaze";
@@ -203,9 +203,9 @@ export const readPaginatedTopRatedUnset = query(
     args: sPaginationWith({ year: S.optional(S.Int) }),
     returns: sPaginated(sShow),
     handler: ({ year, ...pageArgs }) =>
-      year !== undefined
-        ? readPaginatedShows({ aggregate: topRatedShowsByPreferenceAndYear, opts: { namespace: `unset-${year}` } })(pageArgs)
-        : readPaginatedShows({ aggregate: topRatedShowsByPreference, opts: { namespace: "unset" } })(pageArgs),
+      year === undefined
+        ? readPaginatedShows({ aggregate: topRatedShowsByPreference, opts: { namespace: "unset" } })(pageArgs)
+        : readPaginatedShows({ aggregate: topRatedShowsByPreferenceAndYear, opts: { namespace: `unset-${year}` } })(pageArgs),
   })
 );
 
@@ -228,9 +228,9 @@ export const readPaginatedTrendingUnset = query(
     args: sPaginationWith({ year: S.optional(S.Int) }),
     returns: sPaginated(sShow),
     handler: ({ year, ...pageArgs }) =>
-      year !== undefined
-        ? readPaginatedShows({ aggregate: trendingShowsByPreferenceAndYear, opts: { namespace: `unset-${year}` } })(pageArgs)
-        : readPaginatedShows({ aggregate: trendingShowsByPreference, opts: { namespace: "unset" } })(pageArgs),
+      year === undefined
+        ? readPaginatedShows({ aggregate: trendingShowsByPreference, opts: { namespace: "unset" } })(pageArgs)
+        : readPaginatedShows({ aggregate: trendingShowsByPreferenceAndYear, opts: { namespace: `unset-${year}` } })(pageArgs),
   })
 );
 
@@ -258,9 +258,9 @@ export const createManyMissing = mutation(
       const maxApiIdShow = yield* readMaxApiIdShow();
       const newShows = dtos.filter((dto) => O.isNone(maxApiIdShow) || dto.apiId > maxApiIdShow.value.apiId);
       if (newShows.length === 0) return 0;
-      const countryIdsByCode = yield* createMissingCountries(getDistinctCountries(newShows));
-      const channelIdsByApiId = yield* createMissingChannels(getDistinctChannels(newShows), countryIdsByCode);
-      return yield* createShows(newShows, channelIdsByApiId).pipe(E.map(H.size));
+      const countryIds = yield* getOrCreateCountries(getDistinctCountriesFromShows(newShows));
+      const channelIds = yield* getOrCreateChannels(getDistinctChannelsFromShows(newShows), { countryIds });
+      return yield* getOrCreateShows(newShows, { channelIds, checkExisting: false }).pipe(E.map(H.size));
     }),
   })
 );
@@ -272,7 +272,7 @@ export const fetchManyMissing = mutation(
     handler: E.fn(function* (): E.fn.Return<null, S.SchemaError | DocNotFoundInTable<"fetcher">, MutationCtxDeps> {
       const scheduler = yield* Scheduler;
       const page = yield* startFetcher();
-      yield* scheduler.runAfter(0, api.shows.fetchManyMissingPerPage, { page });
+      yield* scheduler.runAfter(0, api.shows.fetchManyMissingByPage, { page });
       return null;
     }),
   })
@@ -320,19 +320,19 @@ export const upsert = mutation(
 );
 
 // ACTIONS ---------------------------------------------------------------------------------------------------------------------------------
-export const fetchManyMissingPerPage = action(
+export const fetchManyMissingByPage = action(
   actionHandler({
     args: S.Struct({ page: S.Int }),
     returns: S.Null,
     handler: ({ page }): E.Effect<null, HttpClientError | S.SchemaError, ActionCtxDeps> =>
       E.gen(function* () {
         const { runMutation, scheduler } = yield* ActionCtx;
-        const { fetchShows } = yield* TvMaze;
-        const potentialMissingShows = yield* fetchShows(page);
+        const { fetchShowsByPage } = yield* TvMaze;
+        const potentialMissingShows = yield* fetchShowsByPage(page);
         if (potentialMissingShows.length === 0) return yield* runMutation(api.fetcher.stop);
-        const created = yield* runMutation(api.shows.createManyMissing, { dtos: potentialMissingShows });
-        yield* runMutation(api.fetcher.update, { created, lastPage: page });
-        yield* scheduler.runAfter(0, api.shows.fetchManyMissingPerPage, { page: page + 1 });
+        const count = yield* runMutation(api.shows.createManyMissing, { dtos: potentialMissingShows });
+        yield* runMutation(api.fetcher.update, { count, page });
+        yield* scheduler.runAfter(0, api.shows.fetchManyMissingByPage, { page: page + 1 });
         return null;
       }).pipe(E.provide(TvMaze.layer)),
   })
@@ -365,8 +365,8 @@ export const refreshAllDaily = action(
     handler: (): E.Effect<null, HttpClientError | S.SchemaError, ActionCtxDeps> =>
       E.gen(function* () {
         const { scheduler } = yield* ActionCtx;
-        const { fetchDailyShowRevisions } = yield* TvMaze;
-        const revisions = yield* fetchDailyShowRevisions();
+        const { fetchShowRevisions } = yield* TvMaze;
+        const revisions = yield* fetchShowRevisions("day");
         const batches = Arr.chunksOf(revisions, SHOW_UPDATE_BATCH_SIZE);
         for (const [index, batch] of batches.entries())
           yield* scheduler.runAfter(index * SHOW_UPDATE_BATCH_DELAY_MS, api.shows.refreshMany, { revisions: [...batch] });

@@ -2,9 +2,9 @@ import { ConvexQueryClient } from "@convex-dev/react-query";
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
-import { ConvexHttpClient } from "convex/browser";
+// import { ConvexHttpClient } from "convex/browser";
 import { ConvexProvider } from "convex/react";
-import { api } from "@/convex/_generated/api";
+// import { api } from "@/convex/_generated/api";
 import { env } from "./env";
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
@@ -22,10 +22,10 @@ export const getRouter = () => {
   });
   convexQueryClient.connect(queryClient);
 
-  const convexHttpClient = new ConvexHttpClient(env.VITE_CONVEX_URL);
-  convexHttpClient.mutation(api.shows.fetchManyMissing).catch((error) => {
-    console.error("SEED DATA FAILED", error);
-  });
+  // const convexHttpClient = new ConvexHttpClient(env.VITE_CONVEX_URL);
+  // convexHttpClient.mutation(api.shows.fetchManyMissing).catch((error) => {
+  //   console.error("SEED DATA FAILED", error);
+  // });
 
   const router = createRouter({
     routeTree,

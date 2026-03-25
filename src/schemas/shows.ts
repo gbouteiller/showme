@@ -30,6 +30,7 @@ export type Shows = {
   Preference: typeof sShowFields.Type.preference;
   Ref: typeof sShowRef.Type;
   Revision: typeof sShowRevision.Type;
+  RevisionPeriod: "day" | "month" | "year";
   WithEpisodesCreate: typeof sShowWithEpisodesCreate.Type;
   WithEpisodesDto: typeof sShowWithEpisodesDto.Type;
 };

@@ -18,7 +18,7 @@ export const stop = mutation(
   mutationHandler({
     args: S.Struct({}),
     returns: S.Null,
-    handler: () => updateFetcher(() => ({ isPending: false })),
+    handler: () => updateFetcher(() => ({ isDone: true, isPending: false })),
   })
 );
 
@@ -32,8 +32,8 @@ export const start = mutation(
 
 export const update = mutation(
   mutationHandler({
-    args: sFetcherFields.mapFields(Struct.pick(["created", "lastPage"])),
+    args: sFetcherFields.mapFields(Struct.pick(["count", "page"])),
     returns: S.Null,
-    handler: ({ created, lastPage }) => updateFetcher((fetcher) => ({ created: fetcher.created + created, lastPage })),
+    handler: ({ count, page }) => updateFetcher((fetcher) => ({ count: fetcher.count + count, page })),
   })
 );

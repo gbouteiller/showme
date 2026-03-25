@@ -93,7 +93,7 @@ function HeaderNavs() {
 function HeaderProgress() {
   const { data } = useQuery({
     ...convexQuery(api.fetcher.read),
-    select: (fetcher) => ({ created: fetcher?.created ?? 0, isPending: fetcher?.isPending ?? true }),
+    // select: (fetcher) => ({ created: fetcher?.created ?? 0, isPending: fetcher?.isPending ?? true }),
   });
 
   useEffect(() => {
