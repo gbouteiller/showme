@@ -1,4 +1,5 @@
 import { TableAggregate } from "@convex-dev/aggregate";
+import { Migrations } from "@convex-dev/migrations";
 import { formatISO, parseISO } from "date-fns";
 import { Effect as E, Option as O, Schema as S, Struct } from "effect";
 import type { HttpClientError } from "effect/unstable/http/HttpClientError";
@@ -7,7 +8,7 @@ import { sEpisodeCreate } from "@/schemas/creates";
 import { type Episodes, sEpisode } from "@/schemas/episodes";
 import { sShow } from "@/schemas/shows";
 import { TvMaze } from "@/services/tvmaze";
-import { api, components } from "./_generated/api";
+import { api, components, internal } from "./_generated/api";
 import type { DataModel, Id } from "./_generated/dataModel";
 import { action, query } from "./_generated/server";
 import { actionHandler, mutationHandler, queryHandler } from "./effex";
@@ -24,13 +25,13 @@ const WATCH_BATCH_SIZE = 100;
 // AGGREGATES ------------------------------------------------------------------------------------------------------------------------------
 export const unwatchedEpisodes = new TableAggregate<AggregateEpisodesParams>(components.unwatchedEpisodes, {
   namespace: ({ isWatched, preference }) => [preference, isWatched],
-  sortKey: ({ airstamp }) => -parseISO(airstamp).getTime(),
+  sortKey: ({ airstamp, number, season, showId }) => [-parseISO(airstamp).getTime(), `${showId}`, -season, -(number ?? 0)],
 });
 triggers.register("episodes", unwatchedEpisodes.trigger());
 
 export const upcomingEpisodes = new TableAggregate<AggregateEpisodesParams>(components.upcomingEpisodes, {
   namespace: ({ isWatched, preference }) => [preference, isWatched],
-  sortKey: ({ airstamp }) => parseISO(airstamp).getTime(),
+  sortKey: ({ airstamp, number, season, showId }) => [parseISO(airstamp).getTime(), `${showId}`, season, number ?? 0],
 });
 triggers.register("episodes", upcomingEpisodes.trigger());
 
@@ -61,7 +62,7 @@ export const readPaginatedUnwatched = query(
     handler: ({ timestamp, ...pageArgs }) =>
       readPaginatedEpisodes({
         aggregate: unwatchedEpisodes,
-        opts: { namespace: ["favorite", false], bounds: { lower: { inclusive: true, key: -timestamp } } },
+        opts: { namespace: ["favorite", false], bounds: { lower: { inclusive: true, key: [-timestamp] } } },
       })(pageArgs),
   })
 );
@@ -73,7 +74,7 @@ export const readPaginatedUpcoming = query(
     handler: ({ timestamp, ...pageArgs }) =>
       readPaginatedEpisodes({
         aggregate: upcomingEpisodes,
-        opts: { namespace: ["favorite", false], bounds: { lower: { inclusive: false, key: timestamp } } },
+        opts: { namespace: ["favorite", false], bounds: { lower: { inclusive: false, key: [timestamp] } } },
       })(pageArgs),
   })
 );
@@ -164,7 +165,21 @@ export const fetchForShow = action(
 // TYPES -----------------------------------------------------------------------------------------------------------------------------------
 type AggregateEpisodesParams = {
   DataModel: DataModel;
-  Key: number;
+  Key: (number | string)[];
   Namespace?: [Episodes["Entity"]["preference"], Episodes["Entity"]["isWatched"]];
   TableName: "episodes";
 };
+
+// MIGRATIONS ------------------------------------------------------------------------------------------------------------------------------
+export const migrations = new Migrations<DataModel>(components.migrations);
+export const run = migrations.runner();
+
+export const backfillAggregatesMigration = migrations.define({
+  table: "episodes",
+  migrateOne: async (ctx, doc) => {
+    await unwatchedEpisodes.insertIfDoesNotExist(ctx, doc);
+    await upcomingEpisodes.insertIfDoesNotExist(ctx, doc);
+  },
+});
+
+export const runAggregateBackfill = migrations.runner(internal.episodes.backfillAggregatesMigration);

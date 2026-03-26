@@ -110,40 +110,6 @@ export const trendingShowsByPreferenceAndYear = new TableAggregate<AggregateShow
 );
 triggers.register("shows", trendingShowsByPreferenceAndYear.trigger());
 
-// MIGRATIONS ------------------------------------------------------------------------------------------------------------------------------
-export const migrations = new Migrations<DataModel>(components.migrations);
-export const run = migrations.runner();
-
-export const backfillTrackEpisodesMigration = migrations.define({
-  table: "shows",
-  migrateOne: async (ctx, doc) => {
-    if (doc.trackEpisodes !== undefined) return;
-    const firstEpisode = await ctx.db
-      .query("episodes")
-      .withIndex("by_show", (q) => q.eq("showId", doc._id))
-      .first();
-    await ctx.db.patch(doc._id, { trackEpisodes: doc.preference === "favorite" || firstEpisode !== null });
-  },
-});
-
-export const backfillAggregatesMigration = migrations.define({
-  table: "shows",
-  migrateOne: async (ctx, doc) => {
-    // await favoriteShows.insertIfDoesNotExist(ctx, doc);
-    // await trendingShows.insertIfDoesNotExist(ctx, doc);
-    // await trendingShowsByYear.insertIfDoesNotExist(ctx, doc);
-    // await topRatedShows.insertIfDoesNotExist(ctx, doc);
-    // await topRatedShowsByYear.insertIfDoesNotExist(ctx, doc);
-    // await topRatedShowsByPreference.insertIfDoesNotExist(ctx, doc);
-    // await topRatedShowsByPreferenceAndYear.insertIfDoesNotExist(ctx, doc);
-    await trendingShowsByPreference.insertIfDoesNotExist(ctx, doc);
-    await trendingShowsByPreferenceAndYear.insertIfDoesNotExist(ctx, doc);
-  },
-});
-
-export const runTrackEpisodesBackfill = migrations.runner(internal.shows.backfillTrackEpisodesMigration);
-export const runAggregateBackfill = migrations.runner(internal.shows.backfillAggregatesMigration);
-
 // QUERIES ---------------------------------------------------------------------------------------------------------------------------------
 export const readMissingOrStale = query(
   queryHandler({
@@ -380,3 +346,24 @@ type AggregateShowsParams<Namespace, Key> = {
   Namespace?: Namespace;
   TableName: "shows";
 };
+
+// MIGRATIONS ------------------------------------------------------------------------------------------------------------------------------
+export const migrations = new Migrations<DataModel>(components.migrations);
+export const run = migrations.runner();
+
+export const backfillAggregatesMigration = migrations.define({
+  table: "shows",
+  migrateOne: async (ctx, doc) => {
+    // await favoriteShows.insertIfDoesNotExist(ctx, doc);
+    // await trendingShows.insertIfDoesNotExist(ctx, doc);
+    // await trendingShowsByYear.insertIfDoesNotExist(ctx, doc);
+    // await topRatedShows.insertIfDoesNotExist(ctx, doc);
+    // await topRatedShowsByYear.insertIfDoesNotExist(ctx, doc);
+    // await topRatedShowsByPreference.insertIfDoesNotExist(ctx, doc);
+    // await topRatedShowsByPreferenceAndYear.insertIfDoesNotExist(ctx, doc);
+    await trendingShowsByPreference.insertIfDoesNotExist(ctx, doc);
+    await trendingShowsByPreferenceAndYear.insertIfDoesNotExist(ctx, doc);
+  },
+});
+
+export const runAggregateBackfill = migrations.runner(internal.shows.backfillAggregatesMigration);
