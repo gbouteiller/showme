@@ -14,9 +14,12 @@ import { actionHandler, mutationHandler, queryHandler } from "./effex";
 import { sId } from "./effex/schemas/genericId";
 import { ActionCtx, type ActionCtxDeps } from "./effex/services/ActionCtx";
 import { DatabaseWriter } from "./effex/services/DatabaseWriter";
-import { MutationCtx } from "./effex/services/MutationCtx";
+import { MutationCtx, type MutationCtxDeps } from "./effex/services/MutationCtx";
 import { sPaginated, sPaginationWith } from "./effex/utils";
 import { mutation, triggers } from "./triggers";
+
+// CONSTANTS -------------------------------------------------------------------------------------------------------------------------------
+const WATCH_BATCH_SIZE = 100;
 
 // AGGREGATES ------------------------------------------------------------------------------------------------------------------------------
 export const unwatchedEpisodes = new TableAggregate<AggregateEpisodesParams>(components.unwatchedEpisodes, {
@@ -107,13 +110,17 @@ export const setSeasonAiredWatched = mutation(
   mutationHandler({
     args: sEpisode.mapFields(Struct.pick(["isWatched", "season", "showId"])),
     returns: S.Null,
-    handler: E.fn(function* ({ isWatched, season, showId }) {
-      const db = yield* DatabaseWriter;
+    handler: E.fn(function* ({ isWatched, season, showId }): E.fn.Return<null, S.SchemaError, MutationCtxDeps> {
+      const { db, scheduler } = yield* MutationCtx;
+      const now = formatISO(Date.now());
       const episodes = yield* db
         .query("episodes")
-        .withIndex("by_show_and_season", (q) => q.eq("showId", showId).eq("season", season).lt("airstamp", formatISO(Date.now())))
-        .collect();
+        .withIndex("by_show_and_season", (q) => q.eq("showId", showId).eq("season", season).lt("airstamp", now))
+        .filter((q) => q.neq(q.field("isWatched"), isWatched))
+        .take(WATCH_BATCH_SIZE);
       for (const episode of episodes) yield* db.patch("episodes", episode._id, { isWatched });
+      if (episodes.length === WATCH_BATCH_SIZE)
+        yield* scheduler.runAfter(0, api.episodes.setSeasonAiredWatched, { isWatched, season, showId });
       return null;
     }),
   })
@@ -123,13 +130,16 @@ export const setShowAiredWatched = mutation(
   mutationHandler({
     args: sEpisode.mapFields(Struct.pick(["isWatched", "showId"])),
     returns: S.Null,
-    handler: E.fn(function* ({ isWatched, showId }) {
-      const db = yield* DatabaseWriter;
+    handler: E.fn(function* ({ isWatched, showId }): E.fn.Return<null, S.SchemaError, MutationCtxDeps> {
+      const { db, scheduler } = yield* MutationCtx;
+      const now = formatISO(Date.now());
       const episodes = yield* db
         .query("episodes")
-        .withIndex("by_show", (q) => q.eq("showId", showId).lt("airstamp", formatISO(Date.now())))
-        .collect();
+        .withIndex("by_show", (q) => q.eq("showId", showId).lt("airstamp", now))
+        .filter((q) => q.neq(q.field("isWatched"), isWatched))
+        .take(WATCH_BATCH_SIZE);
       for (const episode of episodes) yield* db.patch("episodes", episode._id, { isWatched });
+      if (episodes.length === WATCH_BATCH_SIZE) yield* scheduler.runAfter(0, api.episodes.setShowAiredWatched, { isWatched, showId });
       return null;
     }),
   })
