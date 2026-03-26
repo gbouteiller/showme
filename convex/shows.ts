@@ -25,10 +25,6 @@ import { Scheduler } from "./effex/services/Scheduler";
 import { optionMapEffect, sPaginated, sPaginationWith } from "./effex/utils";
 import { mutation, triggers } from "./triggers";
 
-const SHOW_UPDATE_BATCH_DELAY_MS = 10_000;
-const SHOW_UPDATE_BATCH_SIZE = 100;
-const sShowRefreshPlan = S.Struct({ apiId: S.Int, includeEpisodes: S.Boolean });
-
 // AGGREGATES ------------------------------------------------------------------------------------------------------------------------------
 export const favoriteShows = new TableAggregate<AggregateShowsParams<boolean, string>>(components.favoriteShows, {
   namespace: ({ preference }) => {
@@ -149,18 +145,18 @@ export const runTrackEpisodesBackfill = migrations.runner(internal.shows.backfil
 export const runAggregateBackfill = migrations.runner(internal.shows.backfillAggregatesMigration);
 
 // QUERIES ---------------------------------------------------------------------------------------------------------------------------------
-export const readRefreshPlans = query(
+export const readMissingOrStale = query(
   queryHandler({
     args: S.Struct({ revisions: S.Array(sShowRevision) }),
-    returns: S.Array(sShowRefreshPlan),
+    returns: S.Array(S.Struct({ apiId: S.Int, includeEpisodes: S.Boolean })),
     handler: E.fn(function* ({ revisions }) {
-      const refreshPlans: (typeof sShowRefreshPlan.Type)[] = [];
-      for (const revision of revisions) {
-        const show = yield* readShowByApiId(revision.apiId);
-        if (O.isSome(show) && show.value.updated >= revision.updated) continue;
-        refreshPlans.push({ apiId: revision.apiId, includeEpisodes: O.isSome(show) && show.value.trackEpisodes });
+      const items: { apiId: number; includeEpisodes: boolean }[] = [];
+      for (const { apiId, updated } of revisions) {
+        const show = yield* readShowByApiId(apiId);
+        if (O.isNone(show) || show.value.updated < updated)
+          items.push({ apiId, includeEpisodes: O.isSome(show) && show.value.trackEpisodes });
       }
-      return refreshPlans;
+      return items;
     }),
   })
 );
@@ -330,7 +326,9 @@ export const fetchManyMissingByPage = action(
         const { fetchShowsByPage } = yield* TvMaze;
         const potentialMissingShows = yield* fetchShowsByPage(page);
         if (potentialMissingShows.length === 0) return yield* runMutation(api.fetcher.stop);
-        const count = yield* runMutation(api.shows.createManyMissing, { dtos: potentialMissingShows });
+        let count = 0;
+        const batches = Arr.chunksOf(potentialMissingShows, 25); // TODO: tune
+        for (const batch of batches) count += yield* runMutation(api.shows.createManyMissing, { dtos: [...batch] });
         yield* runMutation(api.fetcher.update, { count, page });
         yield* scheduler.runAfter(0, api.shows.fetchManyMissingByPage, { page: page + 1 });
         return null;
@@ -338,7 +336,7 @@ export const fetchManyMissingByPage = action(
   })
 );
 
-export const refreshMany = action(
+export const refreshMissingOrStale = action(
   actionHandler({
     args: S.Struct({ revisions: S.Array(sShowRevision) }),
     returns: S.Null,
@@ -346,10 +344,10 @@ export const refreshMany = action(
       E.gen(function* () {
         if (revisions.length === 0) return null;
         const { runMutation, runQuery } = yield* ActionCtx;
-        const refreshPlans = yield* runQuery(api.shows.readRefreshPlans, { revisions });
-        if (refreshPlans.length === 0) return null;
+        const shows = yield* runQuery(api.shows.readMissingOrStale, { revisions });
+        if (shows.length === 0) return null;
         const { fetchShow, fetchShowWithEpisodes } = yield* TvMaze;
-        for (const { apiId, includeEpisodes } of refreshPlans) {
+        for (const { apiId, includeEpisodes } of shows) {
           const dto = includeEpisodes ? yield* fetchShowWithEpisodes(apiId) : yield* fetchShow(apiId);
           yield* runMutation(api.shows.upsert, { dto });
         }
@@ -367,9 +365,9 @@ export const refreshAllDaily = action(
         const { scheduler } = yield* ActionCtx;
         const { fetchShowRevisions } = yield* TvMaze;
         const revisions = yield* fetchShowRevisions("day");
-        const batches = Arr.chunksOf(revisions, SHOW_UPDATE_BATCH_SIZE);
+        const batches = Arr.chunksOf(revisions, 100); // TODO: tune
         for (const [index, batch] of batches.entries())
-          yield* scheduler.runAfter(index * SHOW_UPDATE_BATCH_DELAY_MS, api.shows.refreshMany, { revisions: [...batch] });
+          yield* scheduler.runAfter(index * 10_000, api.shows.refreshMissingOrStale, { revisions: [...batch] });
         return null;
       }).pipe(E.provide(TvMaze.layer)),
   })

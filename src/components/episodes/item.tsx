@@ -62,8 +62,8 @@ type EpisodeItemProps = {
 // ACTIONS ---------------------------------------------------------------------------------------------------------------------------------
 export function EpisodeItemActions({ episode: { _id, season, show, showId }, isAired }: EpisodeItemActionsProps) {
   const { mutate: setWatched } = useMutation({ mutationFn: useConvexMutation(api.episodes.setWatched) });
-  const { mutate: setSeasonWatched } = useMutation({ mutationFn: useConvexMutation(api.episodes.setSeasonWatched) });
-  const { mutate: setShowWatched } = useMutation({ mutationFn: useConvexMutation(api.episodes.setShowWatched) });
+  const { mutate: setSeasonAiredWatched } = useMutation({ mutationFn: useConvexMutation(api.episodes.setSeasonAiredWatched) });
+  const { mutate: setShowAiredWatched } = useMutation({ mutationFn: useConvexMutation(api.episodes.setShowAiredWatched) });
 
   return (
     <div className={EPISODE_ITEM.actions()}>
@@ -71,14 +71,14 @@ export function EpisodeItemActions({ episode: { _id, season, show, showId }, isA
         description={`Do you really want to mark all episodes of ${show.name} as watched?`}
         icon="icon-[lucide--eye-off]"
         label="Mark all as watched (show)"
-        onClick={() => setShowWatched({ isWatched: true, showId })}
+        onClick={() => setShowAiredWatched({ isWatched: true, showId })}
         title="Mark all as watched?"
       />
       <IconConfirm
         description={`Do you really want to mark all episodes of season ${season} as watched?`}
         icon="icon-[fluent--text-bullet-list-checkmark-20-filled]"
         label="Mark all as watched (season)"
-        onClick={() => setSeasonWatched({ isWatched: true, season, showId })}
+        onClick={() => setSeasonAiredWatched({ isWatched: true, season, showId })}
         title="Mark all as watched?"
       />
       {isAired && (

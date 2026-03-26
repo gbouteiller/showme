@@ -47,7 +47,10 @@ function FirstLauncher() {
   const [open, setOpen] = useState(false);
 
   const { mutate: fetchManyMissing } = useMutation({ mutationFn: useConvexMutation(api.shows.fetchManyMissing) });
-  const { data } = useQuery(convexQuery(api.fetcher.read));
+  const { data } = useQuery({
+    ...convexQuery(api.fetcher.read),
+    select: (data) => ({ hasItems: (data?.count ?? 0) > 0, isIncomplete: data === null || data.isDone === false }),
+  });
 
   const handleFetch = () => {
     fetchManyMissing({});
@@ -55,15 +58,15 @@ function FirstLauncher() {
   };
 
   useEffect(() => {
-    if (data === null) setOpen(true);
+    if (data?.isIncomplete) setOpen(true);
   }, [data]);
 
   return (
     <Dialog onOpenChange={setOpen} open={open}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>FIRST LAUNCH</DialogTitle>
-          <DialogDescription>Let's fetch your first shows</DialogDescription>
+          <DialogTitle>{data?.hasItems ? "INCOMPLETE FETCHING" : "FIRST LAUNCH"}</DialogTitle>
+          <DialogDescription>Let's fetch the shows</DialogDescription>
         </DialogHeader>
         The process can be quite long, so please keep the app open until the progress bar disappears.
         <DialogFooter>

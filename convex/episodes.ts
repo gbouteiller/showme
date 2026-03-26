@@ -103,7 +103,7 @@ export const setWatched = mutation(
   })
 );
 
-export const setSeasonWatched = mutation(
+export const setSeasonAiredWatched = mutation(
   mutationHandler({
     args: sEpisode.mapFields(Struct.pick(["isWatched", "season", "showId"])),
     returns: S.Null,
@@ -119,7 +119,7 @@ export const setSeasonWatched = mutation(
   })
 );
 
-export const setShowWatched = mutation(
+export const setShowAiredWatched = mutation(
   mutationHandler({
     args: sEpisode.mapFields(Struct.pick(["isWatched", "showId"])),
     returns: S.Null,

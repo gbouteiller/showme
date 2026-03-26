@@ -15,13 +15,9 @@ export const readFetcherOrThrow = () => readFetcher().pipe(E.map(O.getOrThrow));
 export const startFetcher = E.fn(function* () {
   const db = yield* DatabaseWriter;
   const fetcher = yield* readFetcher();
-  const args = { count: 0, isDone: false, isPending: true };
-  if (O.isNone(fetcher)) {
-    yield* db.insert("fetcher", { ...args, page: 0 });
-    return 0;
-  }
-  yield* db.patch("fetcher", fetcher.value._id, args);
-  return fetcher.value.page;
+  if (O.isSome(fetcher)) return fetcher.value.page;
+  yield* db.insert("fetcher", { count: 0, isDone: false, isPending: true, page: 0 });
+  return 0;
 });
 
 export const updateFetcher = E.fn(function* (args: (fetcher: Fetchers["Doc"]) => Partial<Fetchers["Fields"]>) {

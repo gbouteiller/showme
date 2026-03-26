@@ -12,7 +12,7 @@ export const readPaginated = E.fn(function* <TN extends TableNames, K extends V,
 ) {
   const { aggregate, opts, pageIndex = 0, pageSize = 10, table } = props;
   const total = yield* count({ aggregate, opts });
-  const cursor = yield* at({ aggregate, offset: pageIndex * pageSize - 1, opts });
+  const cursor = yield* at({ aggregate, offset: Math.min(total - 1, pageIndex * pageSize - 1), opts });
   return { total, ...(yield* paginate({ aggregate, opts: { ...opts, cursor, pageSize }, table })) };
 });
 
